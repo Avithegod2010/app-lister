@@ -32,6 +32,14 @@ yarn-error.*
 
 # local env files
 .env*.local
+.env
+
+# secrets — never commit tokens or keystores
+.secrets/
+*.token
+eas-build.log
+*.apk
+*.aab
 
 # typescript
 *.tsbuildinfo

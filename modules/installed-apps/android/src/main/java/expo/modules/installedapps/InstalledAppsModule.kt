@@ -79,7 +79,7 @@ class InstalledAppsModule : Module() {
         val colors = WallpaperManager.getInstance(context)
           .getWallpaperColors(WallpaperManager.FLAG_SYSTEM)
           ?: return@Function null
-        String.format(Locale.US, "#%08X", colors.primaryColor.toArgb())
+        String.format(Locale.US, "#%08X", colors.primaryColor)
       } catch (_: Exception) {
         null
       }

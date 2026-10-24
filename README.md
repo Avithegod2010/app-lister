@@ -1,60 +1,82 @@
+<div align="center">
+
+<img src="assets/images/icon.png" width="96" alt="App Lister icon" />
+
 # App Lister
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-![Expo](https://img.shields.io/badge/Expo-SDK%2054-000020?logo=expo)
-![Platform](https://img.shields.io/badge/platform-Android-green)
+**Every app on your phone. One beautiful list. Nothing else.**
 
-A beautiful, single-purpose Android app that lists **every app installed on your phone** — user apps and system apps alike, in one fluid Material You list. Inspired by the *List apps* page of [Inure App Manager](https://github.com/Hamza417/Inure).
+[![Release](https://img.shields.io/github/v/release/Avithegod2010/app-lister?style=flat-square&color=3A55E0)](https://github.com/Avithegod2010/app-lister/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-3A55E0?style=flat-square)](LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?style=flat-square&logo=android&logoColor=white)](https://github.com/Avithegod2010/app-lister/releases/latest)
+[![Expo SDK 54](https://img.shields.io/badge/Expo-SDK%2054-000020?style=flat-square&logo=expo&logoColor=white)](https://expo.dev)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](CONTRIBUTING.md)
 
-> **This app does one thing: it lists your apps.** No managers, no killers, no clutter.
+[📍 Website](https://avithegod2010.github.io/app-lister/) · [⬇ Download APK](https://github.com/Avithegod2010/app-lister/releases/latest) · [ 🛠 Report an issue](https://github.com/Avithegod2010/app-lister/issues)
 
-<!-- Screenshots: drop PNGs into docs/screenshots/ (light-list, dark-list, details) -->
+</div>
 
-## Features
+---
 
-- **Complete app list** — every installed package with its real icon, name, package id and version
-- **Instant search** — filter by app name or package name as you type
-- **Filter chips** — All / User / System apps
-- **Flexible sorting** — name A–Z / Z–A, newest or oldest installs, recently updated, largest APK
-- **App details** — version, version code, min/target OS, install & update dates, APK size and path, plus quick actions: launch the app, open Android's App Info, copy the package name
-- **Export & share** — the whole list as formatted text, CSV or JSON; share via any app or copy to clipboard
-- **Stats at a glance** — total / user / system counters
-- **List & grid views** — dense list or a 4-column icon grid
-- **Material You** — dynamic color extracted from your wallpaper (Android 8.1+), full light & dark themes, fluid spring animations and haptics
-- **Preferences stick** — theme, filter, sort and view mode are remembered
+App Lister does **exactly one thing**: it shows you every app installed on your Android phone — user apps and system apps — in one fast, fluid, gorgeous list. Inspired by the *List apps* page of [Inure App Manager](https://github.com/Hamza417/Inure), but stripped down to its purest form: **no managers, no killers, no analytics, no clutter.**
 
-## Build
+It is **100% offline** — nothing ever leaves your device.
 
-### APK with EAS Build
+## ✨ Features
+
+| | Feature | Details |
+|---|---|---|
+| 📋 | **Complete app list** | Every installed package with its real icon, name, package id and version |
+| 🔍 | **Instant search** | Filter by app name *or* package name as you type |
+| 🏷 | **Filter chips** | Switch between All / User / System apps in one tap |
+| ↕️ | **Flexible sorting** | A–Z, Z–A, newest & oldest installs, recently updated, largest APK |
+| 🔤 | **Section headers** | Alphabetical grouping with sticky letter headers |
+| ▦ | **Two layouts** | Dense list view or a 4-column icon grid |
+| ℹ️ | **App details** | Version, version code, min/target Android, install & update dates, APK size and path |
+| 🚀 | **Quick actions** | Launch any app, open its Android App Info page, copy the package name |
+| 📤 | **Export anywhere** | Share the whole list as **text, CSV or JSON** — via the share sheet or clipboard |
+| 🎨 | **Material You** | Dynamic color extracted from your wallpaper (Android 8.1+), full light & dark themes |
+| 🪄 | **Fluid motion** | Spring animations, shimmer skeletons, haptic feedback on every touch |
+| 💾 | **Sticky preferences** | Theme, filter, sort order and view mode are all remembered |
+
+## ⬇️ Download
+
+Grab the latest APK from the [**Releases**](https://github.com/Avithegod2010/app-lister/releases/latest) page and install it on your phone — no Play Store needed.
+
+- Minimum Android version: **5.0 (Lollipop)**
+- Permission requested: **`QUERY_ALL_PACKAGES`** only — required to list the apps, used for nothing else
+
+## 🔒 Privacy
+
+App Lister works entirely offline. It contains **no ads, no trackers, no analytics, and no network access of any kind**. The only permission it holds is used to read the list of installed apps, which never leaves the device. Exported lists go only where *you* share them.
+
+## 🛠 Tech stack
+
+- [Expo SDK 54](https://expo.dev) · React Native 0.81 · TypeScript · expo-router
+- **Custom local Expo module** (`modules/installed-apps`, Kotlin) — queries Android's `PackageManager`, caches icons to disk, streams scan progress
+- [material-color-utilities](https://www.npmjs.com/package/@material/material-color-utilities) — genuine Material You tonal palettes generated from the wallpaper color
+- FlashList for 60fps scrolling · Reanimated for motion · expo-image for icons
+
+### Build it yourself
 
 ```bash
 npm install
+
+# APK via EAS Build (cloud)
 eas build -p android --profile preview
-```
 
-The `preview` profile produces an installable **APK**.
-
-### Locally
-
-```bash
-npm install
+# or fully local
 npx expo prebuild -p android
 cd android && ./gradlew assembleDebug
 ```
 
-The debug APK lands in `android/app/build/outputs/apk/debug/`.
+The `preview` profile in [`eas.json`](eas.json) produces an installable **APK**; `production` produces an AAB for the Play Store.
 
-## Tech stack
+## 🤝 Credits
 
-- [Expo SDK 54](https://expo.dev) · React Native 0.81 · TypeScript · expo-router
-- **Local Expo native module** (`modules/installed-apps`, Kotlin) — queries Android's `PackageManager`, caches icons on disk, reports scan progress
-- [@material/material-color-utilities](https://www.npmjs.com/package/@material/material-color-utilities) — true Material You tonal palettes from the wallpaper color
-- FlashList, Reanimated, expo-image
+- Inspired by the [Inure App Manager](https://github.com/Hamza417/Inure) *List apps* page
+- Built with [Expo](https://expo.dev) and the React Native community
 
-## Privacy
+## 📄 License
 
-App Lister works **100% offline**. Nothing ever leaves your device. The `QUERY_ALL_PACKAGES` permission is used solely to enumerate installed apps.
-
-## License
-
-[MIT](LICENSE) © 2026 Avithegod2010
+[MIT](LICENSE) © 2026 Avithegod2010 — free to use, study, modify and share.

@@ -11,7 +11,9 @@
     "android": {
       "package": "com.avithegod2010.applister",
       "versionCode": 1,
-      "permissions": ["QUERY_ALL_PACKAGES"],
+      "permissions": [
+        "QUERY_ALL_PACKAGES"
+      ],
       "adaptiveIcon": {
         "backgroundColor": "#3A55E0",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -42,6 +44,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "cde1e3f3-614c-4287-970d-09dc0c07213a"
+      }
+    },
+    "owner": "avithegod-team"
   }
 }

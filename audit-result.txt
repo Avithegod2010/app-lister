@@ -1,0 +1,62 @@
+# npm audit report
+
+decode-uri-component  <=0.4.2
+Severity: moderate
+decode-uri-component: Denial of service via exponential decoding of malformed percent-encoded input - https://github.com/advisories/GHSA-vcc3-ghjq-m6fr
+fix available via `npm audit fix --force`
+Will install expo-router@58.0.26, which is a breaking change
+node_modules/decode-uri-component
+  query-string  5.0.0 - 9.4.1
+  Depends on vulnerable versions of decode-uri-component
+  node_modules/query-string
+    expo-router  1.2.2 - 3.1.2 || 5.2.0-canary-20250611-f0afe80 - 58.0.12
+    Depends on vulnerable versions of query-string
+    node_modules/expo-router
+
+image-size  0.6.3 - 2.0.2
+Severity: high
+image-size: JXL and HEIF parsers allow denial of service through infinite loops - https://github.com/advisories/GHSA-5p2g-fcmc-qvqq
+image-size: ICNS parser allows denial of service through an infinite loop - https://github.com/advisories/GHSA-w3rx-r6r6-pgpr
+fix available via `npm audit fix`
+node_modules/image-size
+
+node-forge  *
+Severity: high
+node-forge RSA PKCS#1 v1.5 signature verification accepts extra nested DigestAlgorithm elements - https://github.com/advisories/GHSA-86w9-cpqp-85rv
+fix available via `npm audit fix --force`
+Will install expo@44.0.6, which is a breaking change
+node_modules/node-forge
+  @expo/cli  <=0.0.0-canary-20231123-1b19f96-4 || >=0.0.1-canary-20231125-d600e44
+  Depends on vulnerable versions of @expo/code-signing-certificates
+  Depends on vulnerable versions of @expo/metro-config
+  Depends on vulnerable versions of node-forge
+  node_modules/expo/node_modules/@expo/cli
+    expo  >=45.0.0-beta.1
+    Depends on vulnerable versions of @expo/cli
+    Depends on vulnerable versions of @expo/metro-config
+    node_modules/expo
+  @expo/code-signing-certificates  *
+  Depends on vulnerable versions of node-forge
+  node_modules/@expo/code-signing-certificates
+
+postcss  <=8.5.22
+Severity: high
+PostCSS has XSS via Unescaped </style> in its CSS Stringify Output - https://github.com/advisories/GHSA-qx2v-qp2m-jg93
+PostCSS: Arbitrary file read and information disclosure via attacker-controlled sourceMappingURL in CSS comments - https://github.com/advisories/GHSA-6g55-p6wh-862q
+PostCSS: incomplete fix of GHSA-6g55-p6wh-862q — attacker-controlled sourceMappingURL reads arbitrary .map files when `from` is unset - https://github.com/advisories/GHSA-fxqj-rqcc-2cmp
+PostCSS: Path Traversal in Previous Source Map Auto-Loading (sourceMappingURL) leads to Arbitrary .map File Disclosure - https://github.com/advisories/GHSA-r28c-9q8g-f849
+fix available via `npm audit fix --force`
+Will install expo@44.0.6, which is a breaking change
+node_modules/postcss
+  @expo/metro-config  <=0.0.1-canary-20240418-8d74597 || 0.8.0 - 55.0.21 || 56.0.0-canary-20260212-4f61309 - 56.0.5
+  Depends on vulnerable versions of postcss
+  node_modules/expo/node_modules/@expo/metro-config
+
+10 vulnerabilities (4 moderate, 6 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+AUDIT_EXIT:1
