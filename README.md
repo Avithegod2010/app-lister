@@ -1,50 +1,60 @@
-# Welcome to your Expo app 👋
+# App Lister
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+![Expo](https://img.shields.io/badge/Expo-SDK%2054-000020?logo=expo)
+![Platform](https://img.shields.io/badge/platform-Android-green)
 
-## Get started
+A beautiful, single-purpose Android app that lists **every app installed on your phone** — user apps and system apps alike, in one fluid Material You list. Inspired by the *List apps* page of [Inure App Manager](https://github.com/Hamza417/Inure).
 
-1. Install dependencies
+> **This app does one thing: it lists your apps.** No managers, no killers, no clutter.
 
-   ```bash
-   npm install
-   ```
+<!-- Screenshots: drop PNGs into docs/screenshots/ (light-list, dark-list, details) -->
 
-2. Start the app
+## Features
 
-   ```bash
-   npx expo start
-   ```
+- **Complete app list** — every installed package with its real icon, name, package id and version
+- **Instant search** — filter by app name or package name as you type
+- **Filter chips** — All / User / System apps
+- **Flexible sorting** — name A–Z / Z–A, newest or oldest installs, recently updated, largest APK
+- **App details** — version, version code, min/target OS, install & update dates, APK size and path, plus quick actions: launch the app, open Android's App Info, copy the package name
+- **Export & share** — the whole list as formatted text, CSV or JSON; share via any app or copy to clipboard
+- **Stats at a glance** — total / user / system counters
+- **List & grid views** — dense list or a 4-column icon grid
+- **Material You** — dynamic color extracted from your wallpaper (Android 8.1+), full light & dark themes, fluid spring animations and haptics
+- **Preferences stick** — theme, filter, sort and view mode are remembered
 
-In the output, you'll find options to open the app in a
+## Build
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+### APK with EAS Build
 
 ```bash
-npm run reset-project
+npm install
+eas build -p android --profile preview
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+The `preview` profile produces an installable **APK**.
 
-## Learn more
+### Locally
 
-To learn more about developing your project with Expo, look at the following resources:
+```bash
+npm install
+npx expo prebuild -p android
+cd android && ./gradlew assembleDebug
+```
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+The debug APK lands in `android/app/build/outputs/apk/debug/`.
 
-## Join the community
+## Tech stack
 
-Join our community of developers creating universal apps.
+- [Expo SDK 54](https://expo.dev) · React Native 0.81 · TypeScript · expo-router
+- **Local Expo native module** (`modules/installed-apps`, Kotlin) — queries Android's `PackageManager`, caches icons on disk, reports scan progress
+- [@material/material-color-utilities](https://www.npmjs.com/package/@material/material-color-utilities) — true Material You tonal palettes from the wallpaper color
+- FlashList, Reanimated, expo-image
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Privacy
+
+App Lister works **100% offline**. Nothing ever leaves your device. The `QUERY_ALL_PACKAGES` permission is used solely to enumerate installed apps.
+
+## License
+
+[MIT](LICENSE) © 2026 Avithegod2010

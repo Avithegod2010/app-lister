@@ -1,0 +1,7 @@
+{
+  "name": "installed-apps",
+  "version": "1.0.0",
+  "description": "Local Expo module that lists every installed app for App Lister",
+  "main": "src/index.ts",
+  "private": true
+}

@@ -1,0 +1,10 @@
+plugins {
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.installedapps'
+version = '1.0.0'
+
+android {
+  namespace 'expo.modules.installedapps'
+}
