@@ -57,3 +57,12 @@ ci.log
 
 # generated audit output
 audit-result.txt
+
+# local build-debug artifacts
+b[0-9].json
+build-info*.json
+build[0-9]*-live.log
+gradle-log*.txt
+blog*.txt
+blog-raw.bin
+logurl.txt
