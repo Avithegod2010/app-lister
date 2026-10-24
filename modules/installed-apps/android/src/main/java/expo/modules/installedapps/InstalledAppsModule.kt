@@ -41,7 +41,9 @@ private const val PROGRESS_STEP = 20
 
 class InstalledAppsModule : Module() {
   private val context: Context
-    get() = requireContext()
+    get() = requireNotNull(appContext.reactContext) {
+      "React context is not available"
+    }
 
   override fun definition() = ModuleDefinition {
     Name("InstalledApps")
