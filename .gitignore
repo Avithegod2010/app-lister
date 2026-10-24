@@ -54,3 +54,6 @@ app-example
 install.log
 ci.log
 .mimosa/
+
+# generated audit output
+audit-result.txt
