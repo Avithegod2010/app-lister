@@ -11,8 +11,8 @@ import type { NativeAppInfo } from 'installed-apps';
 import { AppIcon } from './AppIcon';
 import { useTheme } from '@/src/theme/ThemeProvider';
 
-const SPRING = { damping: 18, stiffness: 260 };
-const ENTRANCE_LIMIT = 14;
+const SPRING = { damping: 22, stiffness: 320 };
+const ENTRANCE_LIMIT = 6;
 
 function usePressScale() {
   const scale = useSharedValue(1);
@@ -47,7 +47,7 @@ export const AppRow = memo(function AppRow({
 
   return (
     <Animated.View
-      entering={index < ENTRANCE_LIMIT ? FadeInDown.delay(index * 22).duration(280) : undefined}
+      entering={index < ENTRANCE_LIMIT ? FadeInDown.delay(index * 10).duration(180) : undefined}
       style={animatedStyle}
     >
       <Pressable
@@ -97,7 +97,7 @@ export const AppTile = memo(function AppTile({
 
   return (
     <Animated.View
-      entering={index < ENTRANCE_LIMIT ? FadeInDown.delay(Math.min(index, 20) * 18).duration(280) : undefined}
+      entering={index < ENTRANCE_LIMIT ? FadeInDown.delay(Math.min(index, 8) * 10).duration(180) : undefined}
       style={[animatedStyle, { width }]}
     >
       <Pressable

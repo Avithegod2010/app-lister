@@ -34,6 +34,8 @@ class AppInfo : Record {
   @Field var apkPath: String = ""
   @Field var apkSizeBytes: Long = 0
   @Field var iconPath: String = ""
+  @Field var installer: String = ""
+  @Field var hasLauncher: Boolean = false
 }
 
 private const val ICON_SIZE = 128
@@ -142,7 +144,23 @@ class InstalledAppsModule : Module() {
       0L
     }
     info.iconPath = writeIcon(pm, ai, pkg.packageName, iconDir)
+    info.installer = installerFor(pm, pkg.packageName)
+    info.hasLauncher = pm.getLaunchIntentForPackage(pkg.packageName) != null
     return info
+  }
+
+  private fun installerFor(pm: PackageManager, packageName: String): String {
+    return try {
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        val source = pm.getInstallSourceInfo(packageName)
+        source.installingPackageName ?: source.initiatingPackageName ?: ""
+      } else {
+        @Suppress("DEPRECATION")
+        pm.getInstallerPackageName(packageName) ?: ""
+      }
+    } catch (_: Exception) {
+      ""
+    }
   }
 
   private fun writeIcon(pm: PackageManager, ai: ApplicationInfo, packageName: String, iconDir: File): String {

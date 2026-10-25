@@ -27,16 +27,17 @@ It is **100% offline** — nothing ever leaves your device.
 | | Feature | Details |
 |---|---|---|
 | 📋 | **Complete app list** | Every installed package with its real icon, name, package id and version |
+| 🎨 | **Full theming** | Material You dynamic color from your wallpaper, 8 accent palettes, AMOLED black mode, light/dark/auto |
 | 🔍 | **Instant search** | Filter by app name *or* package name as you type |
 | 🏷 | **Filter chips** | Switch between All / User / System apps in one tap |
 | ↕️ | **Flexible sorting** | A–Z, Z–A, newest & oldest installs, recently updated, largest APK |
 | 🔤 | **Section headers** | Alphabetical grouping with sticky letter headers |
 | ▦ | **Two layouts** | Dense list view or a 4-column icon grid |
-| ℹ️ | **App details** | Version, version code, min/target Android, install & update dates, APK size and path |
+| ℹ️ | **App details** | Version, version code, category, installer source (Play Store / sideloaded), min/target Android, install & update dates, APK size and path |
+| 📊 | **Live stats** | Total / user / system counts plus combined APK size |
 | 🚀 | **Quick actions** | Launch any app, open its Android App Info page, copy the package name |
 | 📤 | **Export anywhere** | Share the whole list as **text, CSV or JSON** — via the share sheet or clipboard |
-| 🎨 | **Material You** | Dynamic color extracted from your wallpaper (Android 8.1+), full light & dark themes |
-| 🪄 | **Fluid motion** | Spring animations, shimmer skeletons, haptic feedback on every touch |
+| 🪄 | **Calm, fluid motion** | Subtle springs, shimmer skeletons, haptic feedback — never flashy |
 | 💾 | **Sticky preferences** | Theme, filter, sort order and view mode are all remembered |
 
 ## ⬇️ Download

@@ -12,7 +12,7 @@ import { useToast } from '@/src/hooks/useToast';
 import { useApps } from '@/src/store/apps';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import { androidVersionFor } from '@/src/utils/androidVersions';
-import { formatBytes, formatDate } from '@/src/utils/format';
+import { categoryLabel, formatBytes, formatDate, installerLabel } from '@/src/utils/format';
 
 export default function AppDetailsScreen() {
   const { tokens } = useTheme();
@@ -78,13 +78,18 @@ export default function AppDetailsScreen() {
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top + 8, paddingBottom: insets.bottom + 48 }]}>
         <BackButton onPress={goBack} />
 
-        <Animated.View entering={FadeInDown.duration(380)} style={styles.hero}>
+        <Animated.View entering={FadeInDown.duration(240)} style={styles.hero}>
           <AppIcon app={app} size={96} />
           <Text style={[styles.appName, { color: tokens.onSurface }]}>{app.appName}</Text>
           <View style={styles.heroChips}>
             <View style={[styles.heroChip, { backgroundColor: tokens.secondaryContainer }]}>
               <Text style={[styles.heroChipText, { color: tokens.onSecondaryContainer }]}>
                 v{app.versionName}
+              </Text>
+            </View>
+            <View style={[styles.heroChip, { backgroundColor: tokens.secondaryContainer }]}>
+              <Text style={[styles.heroChipText, { color: tokens.onSecondaryContainer }]}>
+                {categoryLabel(app.category)}
               </Text>
             </View>
             {app.isSystem ? (
@@ -125,12 +130,14 @@ export default function AppDetailsScreen() {
         </Animated.View>
 
         <Animated.View
-          entering={FadeInUp.delay(90).duration(360)}
+          entering={FadeInUp.delay(40).duration(220)}
           style={[styles.infoCard, { backgroundColor: tokens.surfaceContainerLow }]}
         >
           <InfoRow label="Package name" value={app.packageName} mono onCopy={copyPackage} />
           <InfoRow label="Version" value={app.versionName} />
           <InfoRow label="Version code" value={app.versionCode ? String(app.versionCode) : '—'} />
+          <InfoRow label="Installed from" value={installerLabel(app.installer)} />
+          <InfoRow label="Category" value={categoryLabel(app.category)} />
           <InfoRow label="Minimum OS" value={androidVersionFor(app.minSdk)} />
           <InfoRow label="Target OS" value={androidVersionFor(app.targetSdk)} />
           <InfoRow label="Installed" value={formatDate(app.installTime)} />

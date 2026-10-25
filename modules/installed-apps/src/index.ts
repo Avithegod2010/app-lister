@@ -14,6 +14,8 @@ export interface NativeAppInfo {
   apkPath: string;
   apkSizeBytes: number;
   iconPath: string;
+  installer: string;
+  hasLauncher: boolean;
 }
 
 export interface ScanProgress {

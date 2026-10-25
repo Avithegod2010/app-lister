@@ -47,8 +47,8 @@ export function OptionSheet({
         <Pressable onPress={() => {}}>
           {visible ? (
             <Animated.View
-              entering={FadeInDown.springify().damping(20).stiffness(280)}
-              exiting={FadeOut.duration(150)}
+              entering={FadeInDown.springify().damping(26).stiffness(300)}
+              exiting={FadeOut.duration(120)}
               style={[
                 styles.sheet,
                 {

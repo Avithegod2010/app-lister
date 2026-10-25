@@ -1,20 +1,21 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeAppInfo } from 'installed-apps';
 import { AppRow, AppTile, SectionHeader } from '@/src/components/AppRow';
 import { OptionSheet, type SheetOption } from '@/src/components/OptionSheet';
+import { ThemeSheet } from '@/src/components/ThemeSheet';
 import { SkeletonRows } from '@/src/components/Skeleton';
 import { useToast } from '@/src/hooks/useToast';
 import { usePersistedState } from '@/src/hooks/usePersistedState';
 import { useApps } from '@/src/store/apps';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import { copyExport, shareExport, type ExportAction, type ExportFormat } from '@/src/utils/export';
-import { letterFor } from '@/src/utils/format';
+import { formatBytes, letterFor } from '@/src/utils/format';
 
 type FilterKey = 'all' | 'user' | 'system';
 type ViewKey = 'list' | 'grid';
@@ -25,6 +26,8 @@ type ListItem =
   | { kind: 'header'; key: string; letter: string }
   | { kind: 'app'; key: string; app: NativeAppInfo };
 
+const APP_LOGO = require('../assets/images/android-icon-foreground.png');
+
 const SORT_OPTIONS: { key: SortKey; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { key: 'name-asc', label: 'Name · A to Z', icon: 'text' },
   { key: 'name-desc', label: 'Name · Z to A', icon: 'text' },
@@ -32,12 +35,6 @@ const SORT_OPTIONS: { key: SortKey; label: string; icon: keyof typeof Ionicons.g
   { key: 'installed-old', label: 'Oldest installs', icon: 'calendar-outline' },
   { key: 'updated-new', label: 'Recently updated', icon: 'time-outline' },
   { key: 'size-desc', label: 'Largest APK', icon: 'save-outline' },
-];
-
-const THEME_OPTIONS: { key: string; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { key: 'system', label: 'System', icon: 'phone-portrait-outline' },
-  { key: 'light', label: 'Light', icon: 'sunny-outline' },
-  { key: 'dark', label: 'Dark', icon: 'moon-outline' },
 ];
 
 const EXPORT_OPTIONS: { key: string; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
@@ -50,7 +47,7 @@ const EXPORT_OPTIONS: { key: string; label: string; icon: keyof typeof Ionicons.
 ];
 
 export default function IndexScreen() {
-  const { tokens, mode, setMode } = useTheme();
+  const { tokens } = useTheme();
   const { apps, status, progress, error, rescan } = useApps();
   const insets = useSafeAreaInsets();
   const { width: windowWidth } = useWindowDimensions();
@@ -64,6 +61,7 @@ export default function IndexScreen() {
   const [sheet, setSheet] = useState<SheetKind>(null);
 
   const userCount = useMemo(() => apps.filter((a) => !a.isSystem).length, [apps]);
+  const totalSize = useMemo(() => apps.reduce((sum, a) => sum + a.apkSizeBytes, 0), [apps]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -173,18 +171,18 @@ export default function IndexScreen() {
     if (sheet === 'sort') {
       return SORT_OPTIONS.map((o) => ({ ...o, checked: o.key === sort }));
     }
-    if (sheet === 'theme') {
-      return THEME_OPTIONS.map((o) => ({ ...o, checked: o.key === mode }));
-    }
     return EXPORT_OPTIONS;
-  }, [sheet, sort, mode]);
+  }, [sheet, sort]);
 
   const scanning = status === 'loading';
 
   return (
     <View style={[styles.root, { backgroundColor: tokens.surface, paddingTop: insets.top }]}>
-      <Animated.View entering={FadeInDown.duration(360)} style={styles.header}>
+      <Animated.View entering={FadeInDown.duration(220)} style={styles.header}>
         <View style={styles.titleRow}>
+          <View style={[styles.logoFrame, { backgroundColor: tokens.primary }]}>
+            <Image source={APP_LOGO} style={styles.logo} resizeMode="contain" />
+          </View>
           <View style={styles.titleBlock}>
             <Text style={[styles.title, { color: tokens.onSurface }]}>All apps</Text>
             <Text style={[styles.subtitle, { color: tokens.onSurfaceVariant }]}>
@@ -192,7 +190,7 @@ export default function IndexScreen() {
                 ? progress
                   ? `Scanning apps · ${progress.total ? `${progress.loaded}/${progress.total}` : progress.loaded}`
                   : 'Scanning apps…'
-                : `${apps.length} apps on this device`}
+                : `${apps.length} apps · ${formatBytes(totalSize)} of APKs`}
             </Text>
           </View>
           <RoundIconButton
@@ -208,14 +206,15 @@ export default function IndexScreen() {
         </View>
 
         <View style={styles.statsRow}>
-          <StatCard label="Total" value={apps.length} bg={tokens.primaryContainer} fg={tokens.onPrimaryContainer} />
-          <StatCard label="User" value={userCount} bg={tokens.secondaryContainer} fg={tokens.onSecondaryContainer} />
+          <StatCard label="Total apps" value={String(apps.length)} bg={tokens.primaryContainer} fg={tokens.onPrimaryContainer} />
+          <StatCard label="User" value={String(userCount)} bg={tokens.secondaryContainer} fg={tokens.onSecondaryContainer} />
           <StatCard
             label="System"
-            value={apps.length - userCount}
+            value={String(apps.length - userCount)}
             bg={tokens.tertiaryContainer}
             fg={tokens.onTertiaryContainer}
           />
+          <StatCard label="APK size" value={formatBytes(totalSize)} bg={tokens.secondaryContainer} fg={tokens.onSecondaryContainer} />
         </View>
 
         <View style={[styles.searchPill, { backgroundColor: tokens.surfaceContainerHigh }]}>
@@ -282,7 +281,7 @@ export default function IndexScreen() {
       </Animated.View>
 
       {status === 'error' ? (
-        <Animated.View entering={FadeInUp.duration(300)} style={styles.centerState}>
+        <View style={styles.centerState}>
           <Ionicons name="cloud-offline-outline" size={48} color={tokens.onSurfaceVariant} />
           <Text style={[styles.stateTitle, { color: tokens.onSurface }]}>Couldn’t scan apps</Text>
           <Text style={[styles.stateBody, { color: tokens.onSurfaceVariant }]}>{error}</Text>
@@ -292,7 +291,7 @@ export default function IndexScreen() {
           >
             <Text style={[styles.retryText, { color: tokens.onPrimary }]}>Try again</Text>
           </Pressable>
-        </Animated.View>
+        </View>
       ) : scanning && apps.length === 0 ? (
         <View style={styles.skeletonWrap}>
           <SkeletonRows />
@@ -323,22 +322,16 @@ export default function IndexScreen() {
       )}
 
       <OptionSheet
-        visible={sheet !== null}
-        title={
-          sheet === 'sort'
-            ? 'Sort by'
-            : sheet === 'theme'
-              ? 'Appearance'
-              : 'Export app list'
-        }
+        visible={sheet === 'sort' || sheet === 'export'}
+        title={sheet === 'sort' ? 'Sort by' : 'Export app list'}
         options={sheetOptions}
         onSelect={(key) => {
           if (sheet === 'sort') setSort(key as SortKey);
-          else if (sheet === 'theme') setMode(key as 'system' | 'light' | 'dark');
           else handleExport(key);
         }}
         onClose={() => setSheet(null)}
       />
+      <ThemeSheet visible={sheet === 'theme'} onClose={() => setSheet(null)} />
       {toastNode}
     </View>
   );
@@ -351,7 +344,7 @@ function StatCard({
   fg,
 }: {
   label: string;
-  value: number;
+  value: string;
   bg: string;
   fg: string;
 }) {
@@ -434,26 +427,39 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
+  },
+  logoFrame: {
+    width: 44,
+    height: 44,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logo: {
+    width: 34,
+    height: 34,
   },
   titleBlock: {
     flex: 1,
     gap: 2,
   },
   title: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: '700',
     letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: 13.5,
+    fontSize: 13,
   },
   statsRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 10,
   },
   statCard: {
-    flex: 1,
+    flexGrow: 1,
+    flexBasis: '44%',
     borderRadius: 18,
     paddingHorizontal: 14,
     paddingVertical: 10,
