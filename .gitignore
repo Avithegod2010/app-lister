@@ -66,3 +66,6 @@ gradle-log*.txt
 blog*.txt
 blog-raw.bin
 logurl.txt
+build-log.txt
+build2.json
+screen*.png
