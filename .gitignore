@@ -62,7 +62,10 @@ audit-result.txt
 b[0-9].json
 build-info*.json
 build[0-9]*-live.log
+build12-local.log
+gradle-local.log
 gradle-log*.txt
+hs_err_pid*.log
 blog*.txt
 blog-raw.bin
 logurl.txt
