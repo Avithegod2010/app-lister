@@ -1,6 +1,9 @@
 package expo.modules.installedapps
 
+import android.app.AppOpsManager
 import android.app.WallpaperManager
+import android.app.usage.UsageEvents
+import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
@@ -87,6 +90,67 @@ class InstalledAppsModule : Module() {
       } catch (_: Exception) {
         null
       }
+    }
+
+    Function("hasUsageAccess") { ->
+      hasUsageAccess()
+    }
+
+    Function("openUsageAccessSettings") { ->
+      val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)
+      intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      context.startActivity(intent)
+    }
+
+    AsyncFunction("getUsageTimes") { promise: Promise ->
+      val appContext = context
+      Thread {
+        try {
+          if (!hasUsageAccess()) {
+            promise.resolve(null)
+            return@Thread
+          }
+          val um = appContext.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
+          val now = System.currentTimeMillis()
+          val begin = now - 90L * 24 * 3600 * 1000
+          val events = um.queryEvents(begin, now)
+          val last = HashMap<String, Long>()
+          val event = UsageEvents.Event()
+          while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED) {
+              val pkg = event.packageName ?: continue
+              if (event.timeStamp > (last[pkg] ?: 0L)) last[pkg] = event.timeStamp
+            }
+          }
+          promise.resolve(last)
+        } catch (e: Exception) {
+          promise.reject("USAGE_FAILED", e.message ?: "Failed to read usage stats", e)
+        }
+      }.start()
+    }
+  }
+
+  private fun hasUsageAccess(): Boolean {
+    return try {
+      val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+      val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        appOps.unsafeCheckOpNoThrow(
+          AppOpsManager.OPSTR_GET_USAGE_STATS,
+          android.os.Process.myUid(),
+          context.packageName,
+        )
+      } else {
+        @Suppress("DEPRECATION")
+        appOps.checkOpNoThrow(
+          AppOpsManager.OPSTR_GET_USAGE_STATS,
+          android.os.Process.myUid(),
+          context.packageName,
+        )
+      }
+      mode == AppOpsManager.MODE_ALLOWED
+    } catch (_: Exception) {
+      false
     }
   }
 

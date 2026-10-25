@@ -20,6 +20,9 @@ const MODE_KEY = 'app-lister.theme.mode';
 const SOURCE_KEY = 'app-lister.theme.source';
 const WALLPAPER_KEY = 'app-lister.theme.wallpaper';
 const AMOLED_KEY = 'app-lister.theme.amoled';
+const SHAPE_KEY = 'app-lister.theme.iconShape';
+
+export type IconShape = 'rounded' | 'circle' | 'square';
 
 interface ThemeContextValue {
   tokens: ThemeTokens;
@@ -29,10 +32,12 @@ interface ThemeContextValue {
   sourceColor: string;
   useWallpaper: boolean;
   amoled: boolean;
+  iconShape: IconShape;
   setMode: (mode: ThemeMode) => void;
   setSourceColor: (hex: string) => void;
   setUseWallpaper: (enabled: boolean) => void;
   setAmoled: (enabled: boolean) => void;
+  setIconShape: (shape: IconShape) => void;
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -43,18 +48,21 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [sourceColor, setSourceColorState] = useState(FALLBACK_SOURCE);
   const [useWallpaper, setUseWallpaperState] = useState(true);
   const [amoled, setAmoledState] = useState(false);
+  const [iconShape, setIconShapeState] = useState<IconShape>('rounded');
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const [storedMode, storedColor, storedWallpaper, storedAmoled] = await Promise.all([
-          AsyncStorage.getItem(MODE_KEY),
-          AsyncStorage.getItem(SOURCE_KEY),
-          AsyncStorage.getItem(WALLPAPER_KEY),
-          AsyncStorage.getItem(AMOLED_KEY),
-        ]);
+        const [storedMode, storedColor, storedWallpaper, storedAmoled, storedShape] =
+          await Promise.all([
+            AsyncStorage.getItem(MODE_KEY),
+            AsyncStorage.getItem(SOURCE_KEY),
+            AsyncStorage.getItem(WALLPAPER_KEY),
+            AsyncStorage.getItem(AMOLED_KEY),
+            AsyncStorage.getItem(SHAPE_KEY),
+          ]);
         if (cancelled) return;
         if (storedMode === 'light' || storedMode === 'dark' || storedMode === 'system') {
           setModeState(storedMode);
@@ -62,6 +70,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         if (storedColor) setSourceColorState(storedColor);
         setUseWallpaperState(storedWallpaper !== '0');
         setAmoledState(storedAmoled === '1');
+        if (storedShape === 'rounded' || storedShape === 'circle' || storedShape === 'square') {
+          setIconShapeState(storedShape);
+        }
       } catch {
         // Preferences are best-effort; defaults are fine without them.
       }
@@ -110,6 +121,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem(AMOLED_KEY, enabled ? '1' : '0').catch(() => {});
   }, []);
 
+  const setIconShape = useCallback((shape: IconShape) => {
+    setIconShapeState(shape);
+    AsyncStorage.setItem(SHAPE_KEY, shape).catch(() => {});
+  }, []);
+
   const value = useMemo<ThemeContextValue>(
     () => ({
       tokens: buildTokens(sourceColor, dark, amoled),
@@ -119,12 +135,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       sourceColor,
       useWallpaper,
       amoled,
+      iconShape,
       setMode,
       setSourceColor,
       setUseWallpaper,
       setAmoled,
+      setIconShape,
     }),
-    [sourceColor, dark, mode, hydrated, useWallpaper, amoled, setMode, setSourceColor, setUseWallpaper, setAmoled],
+    [sourceColor, dark, mode, hydrated, useWallpaper, amoled, iconShape, setMode, setSourceColor, setUseWallpaper, setAmoled, setIconShape],
   );
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;

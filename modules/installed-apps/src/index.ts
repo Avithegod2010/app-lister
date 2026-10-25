@@ -28,6 +28,9 @@ interface InstalledAppsNativeModule {
   launchApp(packageName: string): boolean;
   openAppInfo(packageName: string): void;
   getWallpaperColor(): string | null;
+  hasUsageAccess(): boolean;
+  openUsageAccessSettings(): void;
+  getUsageTimes(): Promise<Record<string, number> | null>;
   addListener(event: string, listener: (event: ScanProgress) => void): { remove(): void };
 }
 
@@ -44,6 +47,9 @@ try {
     launchApp: () => false,
     openAppInfo: () => {},
     getWallpaperColor: () => null,
+    hasUsageAccess: () => false,
+    openUsageAccessSettings: () => {},
+    getUsageTimes: async () => null,
     addListener: () => ({ remove: () => {} }),
   };
 }

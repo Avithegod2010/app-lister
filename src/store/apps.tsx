@@ -24,6 +24,10 @@ interface AppsContextValue {
   nativeAvailable: boolean;
   rescan: () => void;
   getApp: (packageName: string) => NativeAppInfo | undefined;
+  usageTimes: Record<string, number>;
+  usageAccess: boolean;
+  refreshUsage: () => void;
+  openUsageAccessSettings: () => void;
 }
 
 const AppsContext = createContext<AppsContextValue | null>(null);
@@ -33,6 +37,8 @@ export function AppsProvider({ children }: { children: React.ReactNode }) {
   const [apps, setApps] = useState<NativeAppInfo[]>([]);
   const [progress, setProgress] = useState<ScanProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [usageTimes, setUsageTimes] = useState<Record<string, number>>({});
+  const [usageAccess, setUsageAccess] = useState(false);
   const index = useRef(new Map<string, NativeAppInfo>());
 
   const load = useCallback(async () => {
@@ -56,15 +62,35 @@ export function AppsProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  const refreshUsage = useCallback(() => {
+    if (!isNativeAvailable) return;
+    setUsageAccess(native.hasUsageAccess());
+    native
+      .getUsageTimes()
+      .then((times) => {
+        if (times) setUsageTimes(times);
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     const unsubscribe = addScanProgressListener(setProgress);
     load();
     return unsubscribe;
   }, [load]);
 
+  useEffect(() => {
+    if (status === 'ready') refreshUsage();
+  }, [status, refreshUsage]);
+
   const rescan = useCallback(() => {
     load();
-  }, [load]);
+    refreshUsage();
+  }, [load, refreshUsage]);
+
+  const openUsageAccessSettings = useCallback(() => {
+    native.openUsageAccessSettings();
+  }, []);
 
   const getApp = useCallback(
     (packageName: string) => index.current.get(packageName),
@@ -72,8 +98,20 @@ export function AppsProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo<AppsContextValue>(
-    () => ({ status, apps, progress, error, nativeAvailable: isNativeAvailable, rescan, getApp }),
-    [status, apps, progress, error, rescan, getApp],
+    () => ({
+      status,
+      apps,
+      progress,
+      error,
+      nativeAvailable: isNativeAvailable,
+      rescan,
+      getApp,
+      usageTimes,
+      usageAccess,
+      refreshUsage,
+      openUsageAccessSettings,
+    }),
+    [status, apps, progress, error, rescan, getApp, usageTimes, usageAccess, refreshUsage, openUsageAccessSettings],
   );
 
   return <AppsContext.Provider value={value}>{children}</AppsContext.Provider>;

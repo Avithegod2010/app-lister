@@ -1,12 +1,13 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { Pressable, Image, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeAppInfo } from 'installed-apps';
 import { AppRow, AppTile, SectionHeader } from '@/src/components/AppRow';
+import { FastScroller } from '@/src/components/FastScroller';
 import { OptionSheet, type SheetOption } from '@/src/components/OptionSheet';
 import { ThemeSheet } from '@/src/components/ThemeSheet';
 import { SkeletonRows } from '@/src/components/Skeleton';
@@ -14,16 +15,16 @@ import { useToast } from '@/src/hooks/useToast';
 import { usePersistedState } from '@/src/hooks/usePersistedState';
 import { useApps } from '@/src/store/apps';
 import { useTheme } from '@/src/theme/ThemeProvider';
-import { copyExport, shareExport, type ExportAction, type ExportFormat } from '@/src/utils/export';
+import { copyExport, shareExport, type ExportFormat } from '@/src/utils/export';
 import { formatBytes, letterFor } from '@/src/utils/format';
 
-type FilterKey = 'all' | 'user' | 'system';
+type FilterKey = 'all' | 'favorites' | 'user' | 'system' | 'play' | 'sideloaded';
 type ViewKey = 'list' | 'grid';
 type SortKey = 'name-asc' | 'name-desc' | 'installed-new' | 'installed-old' | 'updated-new' | 'size-desc';
 type SheetKind = 'sort' | 'export' | 'theme' | null;
 
 type ListItem =
-  | { kind: 'header'; key: string; letter: string }
+  | { kind: 'header'; key: string; letter: string; tint?: boolean }
   | { kind: 'app'; key: string; app: NativeAppInfo };
 
 const APP_LOGO = require('../assets/images/android-icon-foreground.png');
@@ -46,6 +47,21 @@ const EXPORT_OPTIONS: { key: string; label: string; icon: keyof typeof Ionicons.
   { key: 'copy:json', label: 'Copy as JSON', icon: 'copy-outline' },
 ];
 
+const FILTER_CHIPS: { key: FilterKey; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'favorites', label: '★' },
+  { key: 'user', label: 'User' },
+  { key: 'system', label: 'System' },
+  { key: 'play', label: 'Play Store' },
+  { key: 'sideloaded', label: 'Sideloaded' },
+];
+
+const PLAY_INSTALLERS = new Set([
+  'com.android.vending',
+  'com.sec.android.app.samsungapps',
+  'com.amazon.venezia',
+]);
+
 export default function IndexScreen() {
   const { tokens } = useTheme();
   const { apps, status, progress, error, rescan } = useApps();
@@ -53,12 +69,43 @@ export default function IndexScreen() {
   const { width: windowWidth } = useWindowDimensions();
   const router = useRouter();
   const { node: toastNode, show } = useToast();
+  const listRef = useRef<FlashListRef<ListItem> | null>(null);
 
   const [search, setSearch] = useState('');
   const [filter, setFilter] = usePersistedState<FilterKey>('app-lister.filter', 'all');
   const [sort, setSort] = usePersistedState<SortKey>('app-lister.sort', 'name-asc');
   const [view, setView] = usePersistedState<ViewKey>('app-lister.view', 'list');
+  const [favorites, setFavorites] = usePersistedState<string[]>('app-lister.favorites', []);
   const [sheet, setSheet] = useState<SheetKind>(null);
+  const [selection, setSelection] = useState<string[] | null>(null);
+
+  const favoriteSet = useMemo(() => new Set(favorites), [favorites]);
+
+  const toggleFavorite = useCallback(
+    (app: NativeAppInfo) => {
+      setFavorites(
+        favoriteSet.has(app.packageName)
+          ? favorites.filter((p) => p !== app.packageName)
+          : [...favorites, app.packageName],
+      );
+    },
+    [favorites, favoriteSet, setFavorites],
+  );
+
+  const toggleSelect = useCallback((app: NativeAppInfo) => {
+    setSelection((prev) => {
+      const base = prev ?? [];
+      return base.includes(app.packageName)
+        ? base.filter((p) => p !== app.packageName)
+        : [...base, app.packageName];
+    });
+  }, []);
+
+  const enterSelection = useCallback((app: NativeAppInfo) => {
+    setSelection([app.packageName]);
+  }, []);
+
+  const exitSelection = useCallback(() => setSelection(null), []);
 
   const userCount = useMemo(() => apps.filter((a) => !a.isSystem).length, [apps]);
   const totalSize = useMemo(() => apps.reduce((sum, a) => sum + a.apkSizeBytes, 0), [apps]);
@@ -66,8 +113,11 @@ export default function IndexScreen() {
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     return apps.filter((app) => {
+      if (filter === 'favorites' && !favoriteSet.has(app.packageName)) return false;
       if (filter === 'user' && app.isSystem) return false;
       if (filter === 'system' && !app.isSystem) return false;
+      if (filter === 'play' && !PLAY_INSTALLERS.has(app.installer)) return false;
+      if (filter === 'sideloaded' && PLAY_INSTALLERS.has(app.installer)) return false;
       if (
         query &&
         !app.appName.toLowerCase().includes(query) &&
@@ -77,7 +127,7 @@ export default function IndexScreen() {
       }
       return true;
     });
-  }, [apps, filter, search]);
+  }, [apps, filter, search, favoriteSet]);
 
   const sorted = useMemo(() => {
     const list = [...filtered];
@@ -122,27 +172,71 @@ export default function IndexScreen() {
     return items;
   }, [sorted, view, grouped]);
 
+  const railLetters = useMemo(() => {
+    const set = new Set<string>();
+    for (const item of listData) {
+      if (item.kind === 'header') set.add(item.letter);
+    }
+    return set;
+  }, [listData]);
+
+  const scrollToLetter = useCallback(
+    (letter: string) => {
+      const flat = listRef.current;
+      if (!flat) return;
+      const idx = listData.findIndex((item) => item.kind === 'header' && item.letter === letter);
+      if (idx < 0) return;
+      flat.scrollToIndex({ index: idx, animated: false });
+    },
+    [listData],
+  );
+
   const openApp = useCallback(
     (app: NativeAppInfo) => {
+      if (selection !== null) {
+        toggleSelect(app);
+        return;
+      }
       router.push({ pathname: '/pkg', params: { pkg: app.packageName } });
     },
-    [router],
+    [router, selection, toggleSelect],
   );
 
   const renderItem = useCallback(
     ({ item }: { item: ListItem }) => {
-      if (item.kind === 'header') return <SectionHeader letter={item.letter} />;
-      if (view === 'grid') {
-        return <AppTile app={item.app} width={(windowWidth - 40) / 4} onPress={openApp} />;
+      if (item.kind === 'header') {
+        return <SectionHeader letter={item.letter} tint={filter === 'favorites'} />;
       }
-      return <AppRow app={item.app} onPress={openApp} />;
+      if (view === 'grid') {
+        return (
+          <AppTile
+            app={item.app}
+            width={(windowWidth - 40) / 4}
+            onPress={openApp}
+            favorite={favoriteSet.has(item.app.packageName)}
+            onToggleFavorite={toggleFavorite}
+          />
+        );
+      }
+      return (
+        <AppRow
+          app={item.app}
+          onPress={openApp}
+          onLongPress={enterSelection}
+          favorite={favoriteSet.has(item.app.packageName)}
+          onToggleFavorite={toggleFavorite}
+          selecting={selection !== null}
+          selected={selection?.includes(item.app.packageName) ?? false}
+          onToggleSelect={toggleSelect}
+        />
+      );
     },
-    [view, openApp, windowWidth],
+    [view, openApp, windowWidth, favoriteSet, toggleFavorite, selection, toggleSelect, enterSelection, filter],
   );
 
   const handleExport = useCallback(
     async (key: string) => {
-      const [action, format] = key.split(':') as [ExportAction, ExportFormat];
+      const [action, format] = key.split(':') as ['share' | 'copy', ExportFormat];
       try {
         if (action === 'copy') {
           await copyExport(format, apps);
@@ -157,6 +251,25 @@ export default function IndexScreen() {
     [apps, show],
   );
 
+  const handleBatch = useCallback(
+    async (key: string) => {
+      const [action, format] = key.split(':') as ['share' | 'copy', ExportFormat];
+      const selectedApps = apps.filter((a) => selection?.includes(a.packageName) ?? false);
+      try {
+        if (action === 'copy') {
+          await copyExport(format, selectedApps);
+          show(`${selectedApps.length} apps copied`);
+        } else {
+          await shareExport(format, selectedApps);
+        }
+        exitSelection();
+      } catch {
+        show('Export failed');
+      }
+    },
+    [apps, selection, show, exitSelection],
+  );
+
   const sheetOptions: SheetOption[] = useMemo(() => {
     if (sheet === 'sort') {
       return SORT_OPTIONS.map((o) => ({ ...o, checked: o.key === sort }));
@@ -165,109 +278,136 @@ export default function IndexScreen() {
   }, [sheet, sort]);
 
   const scanning = status === 'loading';
+  const selectedCount = selection?.length ?? 0;
 
   return (
     <View style={[styles.root, { backgroundColor: tokens.surface, paddingTop: insets.top }]}>
       <Animated.View entering={FadeInDown.duration(220)} style={styles.header}>
-        <View style={styles.titleRow}>
-          <View style={[styles.logoFrame, { backgroundColor: tokens.primary }]}>
-            <Image source={APP_LOGO} style={styles.logo} resizeMode="contain" />
-          </View>
-          <View style={styles.titleBlock}>
-            <Text style={[styles.title, { color: tokens.onSurface }]}>All apps</Text>
-            <Text style={[styles.subtitle, { color: tokens.onSurfaceVariant }]}>
-              {scanning
-                ? progress
-                  ? `Scanning apps · ${progress.total ? `${progress.loaded}/${progress.total}` : progress.loaded}`
-                  : 'Scanning apps…'
-                : `${apps.length} apps · ${formatBytes(totalSize)} of APKs`}
-            </Text>
-          </View>
-          <RoundIconButton
-            icon="color-palette-outline"
-            onPress={() => setSheet('theme')}
-            accessibilityLabel="Theme"
-          />
-          <RoundIconButton
-            icon="share-social-outline"
-            onPress={() => setSheet('export')}
-            accessibilityLabel="Export list"
-          />
-        </View>
-
-        <View style={styles.statsRow}>
-          <StatCard label="Total apps" value={String(apps.length)} bg={tokens.primaryContainer} fg={tokens.onPrimaryContainer} />
-          <StatCard label="User" value={String(userCount)} bg={tokens.secondaryContainer} fg={tokens.onSecondaryContainer} />
-          <StatCard
-            label="System"
-            value={String(apps.length - userCount)}
-            bg={tokens.tertiaryContainer}
-            fg={tokens.onTertiaryContainer}
-          />
-          <StatCard label="APK size" value={formatBytes(totalSize)} bg={tokens.secondaryContainer} fg={tokens.onSecondaryContainer} />
-        </View>
-
-        <View style={[styles.searchPill, { backgroundColor: tokens.surfaceContainerHigh }]}>
-          <Ionicons name="search" size={20} color={tokens.onSurfaceVariant} />
-          <TextInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Search apps or packages"
-            placeholderTextColor={tokens.onSurfaceVariant}
-            style={[styles.searchInput, { color: tokens.onSurface }]}
-            autoCapitalize="none"
-            autoCorrect={false}
-            returnKeyType="search"
-          />
-          {search ? (
-            <Pressable onPress={() => setSearch('')} hitSlop={8} accessibilityLabel="Clear search">
-              <Ionicons name="close-circle" size={18} color={tokens.onSurfaceVariant} />
+        {selection !== null ? (
+          <View style={styles.selectionBar}>
+            <Pressable
+              onPress={exitSelection}
+              hitSlop={8}
+              accessibilityLabel="Exit selection"
+              style={[styles.roundIconButton, { backgroundColor: tokens.surfaceContainerHigh }]}
+            >
+              <Ionicons name="close" size={21} color={tokens.onSurface} />
             </Pressable>
-          ) : null}
-        </View>
-
-        <View style={styles.chipsRow}>
-          <Chip
-            label="All"
-            selected={filter === 'all'}
-            onPress={() => setFilter('all')}
-            tokens={tokens}
-          />
-          <Chip
-            label="User"
-            selected={filter === 'user'}
-            onPress={() => setFilter('user')}
-            tokens={tokens}
-          />
-          <Chip
-            label="System"
-            selected={filter === 'system'}
-            onPress={() => setFilter('system')}
-            tokens={tokens}
-          />
-          <View style={styles.chipsSpacer} />
-          <Pressable
-            onPress={() => setSheet('sort')}
-            style={[styles.smallButton, { backgroundColor: tokens.surfaceContainerHigh }]}
-            accessibilityLabel="Sort"
-          >
-            <Ionicons name="swap-vertical" size={16} color={tokens.onSurfaceVariant} />
-            <Text style={[styles.smallButtonText, { color: tokens.onSurfaceVariant }]}>
-              {SORT_OPTIONS.find((o) => o.key === sort)?.label}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={() => setView(view === 'list' ? 'grid' : 'list')}
-            style={[styles.smallButtonIcon, { backgroundColor: tokens.surfaceContainerHigh }]}
-            accessibilityLabel="Toggle view"
-          >
-            <Ionicons
-              name={view === 'list' ? 'grid-outline' : 'list-outline'}
-              size={17}
-              color={tokens.onSurfaceVariant}
+            <View style={styles.titleBlock}>
+              <Text style={[styles.title, { color: tokens.onSurface }]}>Select apps</Text>
+              <Text style={[styles.subtitle, { color: tokens.onSurfaceVariant }]}>
+                {selectedCount} selected
+              </Text>
+            </View>
+            <RoundIconButton
+              icon="copy-outline"
+              onPress={() => setSheet('export')}
+              accessibilityLabel="Export selection"
             />
-          </Pressable>
-        </View>
+          </View>
+        ) : (
+          <View style={styles.titleRow}>
+            <View style={[styles.logoFrame, { backgroundColor: tokens.primary }]}>
+              <Image source={APP_LOGO} style={styles.logo} resizeMode="contain" />
+            </View>
+            <View style={styles.titleBlock}>
+              <Text style={[styles.title, { color: tokens.onSurface }]}>All apps</Text>
+              <Text style={[styles.subtitle, { color: tokens.onSurfaceVariant }]}>
+                {scanning
+                  ? progress
+                    ? `Scanning apps · ${progress.total ? `${progress.loaded}/${progress.total}` : progress.loaded}`
+                    : 'Scanning apps…'
+                  : `${apps.length} apps · ${formatBytes(totalSize)} of APKs`}
+              </Text>
+            </View>
+            <RoundIconButton
+              icon="color-palette-outline"
+              onPress={() => setSheet('theme')}
+              accessibilityLabel="Theme"
+            />
+            <RoundIconButton
+              icon="share-social-outline"
+              onPress={() => setSheet('export')}
+              accessibilityLabel="Export list"
+            />
+          </View>
+        )}
+
+        {selection === null ? (
+          <>
+            <View style={styles.statsRow}>
+              <StatCard label="Total apps" value={String(apps.length)} bg={tokens.primaryContainer} fg={tokens.onPrimaryContainer} />
+              <StatCard label="User" value={String(userCount)} bg={tokens.secondaryContainer} fg={tokens.onSecondaryContainer} />
+              <StatCard
+                label="System"
+                value={String(apps.length - userCount)}
+                bg={tokens.tertiaryContainer}
+                fg={tokens.onTertiaryContainer}
+              />
+              <StatCard label="APK size" value={formatBytes(totalSize)} bg={tokens.secondaryContainer} fg={tokens.onSecondaryContainer} />
+            </View>
+
+            <View style={[styles.searchPill, { backgroundColor: tokens.surfaceContainerHigh }]}>
+              <Ionicons name="search" size={20} color={tokens.onSurfaceVariant} />
+              <TextInput
+                value={search}
+                onChangeText={setSearch}
+                placeholder="Search apps or packages"
+                placeholderTextColor={tokens.onSurfaceVariant}
+                style={[styles.searchInput, { color: tokens.onSurface }]}
+                autoCapitalize="none"
+                autoCorrect={false}
+                returnKeyType="search"
+              />
+              {search ? (
+                <Pressable onPress={() => setSearch('')} hitSlop={8} accessibilityLabel="Clear search">
+                  <Ionicons name="close-circle" size={18} color={tokens.onSurfaceVariant} />
+                </Pressable>
+              ) : null}
+            </View>
+
+            <View style={styles.chipsRow}>
+              {FILTER_CHIPS.map((chip) => (
+                <Chip
+                  key={chip.key}
+                  label={chip.label}
+                  selected={filter === chip.key}
+                  onPress={() => setFilter(chip.key)}
+                  tokens={tokens}
+                />
+              ))}
+              <View style={styles.chipsSpacer} />
+              <Pressable
+                onPress={() => setSheet('sort')}
+                style={[styles.smallButton, { backgroundColor: tokens.surfaceContainerHigh }]}
+                accessibilityLabel="Sort"
+              >
+                <Ionicons name="swap-vertical" size={16} color={tokens.onSurfaceVariant} />
+                <Text style={[styles.smallButtonText, { color: tokens.onSurfaceVariant }]}>
+                  {SORT_OPTIONS.find((o) => o.key === sort)?.label}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setView(view === 'list' ? 'grid' : 'list')}
+                style={[styles.smallButtonIcon, { backgroundColor: tokens.surfaceContainerHigh }]}
+                accessibilityLabel="Toggle view"
+              >
+                <Ionicons
+                  name={view === 'list' ? 'grid-outline' : 'list-outline'}
+                  size={17}
+                  color={tokens.onSurfaceVariant}
+                />
+              </Pressable>
+            </View>
+          </>
+        ) : (
+          <View style={[styles.hint, { backgroundColor: tokens.surfaceContainerLow }]}>
+            <Ionicons name="hand-left-outline" size={15} color={tokens.onSurfaceVariant} />
+            <Text style={[styles.hintText, { color: tokens.onSurfaceVariant }]}>
+              Tap apps to select · long-press to start again
+            </Text>
+          </View>
+        )}
       </Animated.View>
 
       {status === 'error' ? (
@@ -287,35 +427,46 @@ export default function IndexScreen() {
           <SkeletonRows />
         </View>
       ) : (
-        <FlashList
-          key={view}
-          data={listData}
-          renderItem={renderItem}
-          keyExtractor={(item) => item.key}
-          numColumns={view === 'grid' ? 4 : 1}
-          contentContainerStyle={
-            view === 'grid' ? styles.gridContent : styles.listContent
-          }
-          onRefresh={rescan}
-          refreshing={scanning && apps.length > 0}
-          ListEmptyComponent={
-            <View style={styles.centerState}>
-              <Ionicons name="search-outline" size={48} color={tokens.onSurfaceVariant} />
-              <Text style={[styles.stateTitle, { color: tokens.onSurface }]}>No apps found</Text>
-              <Text style={[styles.stateBody, { color: tokens.onSurfaceVariant }]}>
-                Nothing matches “{search.trim()}”. Try another name or package.
-              </Text>
-            </View>
-          }
-        />
+        <View style={styles.listWrap}>
+          <FlashList
+            ref={listRef}
+            key={view}
+            data={listData}
+            renderItem={renderItem}
+            keyExtractor={(item) => item.key}
+            numColumns={view === 'grid' ? 4 : 1}
+            contentContainerStyle={
+              view === 'grid' ? styles.gridContent : styles.listContent
+            }
+            onRefresh={rescan}
+            refreshing={scanning && apps.length > 0}
+            ListEmptyComponent={
+              <View style={styles.centerState}>
+                <Ionicons name="search-outline" size={48} color={tokens.onSurfaceVariant} />
+                <Text style={[styles.stateTitle, { color: tokens.onSurface }]}>
+                  {filter === 'favorites' && !search ? 'No favorites yet' : 'No apps found'}
+                </Text>
+                <Text style={[styles.stateBody, { color: tokens.onSurfaceVariant }]}>
+                  {filter === 'favorites' && !search
+                    ? 'Tap the star on any app to pin it here.'
+                    : `Nothing matches “${search.trim()}”. Try another name or package.`}
+                </Text>
+              </View>
+            }
+          />
+          {view === 'list' && grouped && status === 'ready' ? (
+            <FastScroller availableLetters={railLetters} onLetter={scrollToLetter} />
+          ) : null}
+        </View>
       )}
 
       <OptionSheet
         visible={sheet === 'sort' || sheet === 'export'}
-        title={sheet === 'sort' ? 'Sort by' : 'Export app list'}
+        title={sheet === 'sort' ? 'Sort by' : selection !== null ? 'Export selection' : 'Export app list'}
         options={sheetOptions}
         onSelect={(key) => {
           if (sheet === 'sort') setSort(key as SortKey);
+          else if (selection !== null) handleBatch(key);
           else handleExport(key);
         }}
         onClose={() => setSheet(null)}
@@ -418,6 +569,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  selectionBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   logoFrame: {
     width: 44,
     height: 44,
@@ -480,9 +636,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    flexWrap: 'wrap',
   },
   chipsSpacer: {
     flex: 1,
+  },
+  hint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  hintText: {
+    fontSize: 13,
   },
   chip: {
     flexDirection: 'row',
@@ -523,6 +691,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  listWrap: {
+    flex: 1,
   },
   listContent: {
     paddingBottom: 40,

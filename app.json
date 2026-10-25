@@ -2,7 +2,7 @@
   "expo": {
     "name": "App Lister",
     "slug": "app-lister",
-    "version": "1.1.1",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "applister",
@@ -10,9 +10,10 @@
     "newArchEnabled": true,
     "android": {
       "package": "com.avithegod2010.applister",
-      "versionCode": 3,
+      "versionCode": 4,
       "permissions": [
-        "QUERY_ALL_PACKAGES"
+        "QUERY_ALL_PACKAGES",
+        "PACKAGE_USAGE_STATS"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#3A55E0",

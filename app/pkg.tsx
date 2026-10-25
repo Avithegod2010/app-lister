@@ -1,5 +1,5 @@
-import React, { useCallback } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
@@ -9,6 +9,7 @@ import * as Clipboard from 'expo-clipboard';
 import native from 'installed-apps';
 import { AppIcon } from '@/src/components/AppIcon';
 import { useToast } from '@/src/hooks/useToast';
+import { usePersistedState } from '@/src/hooks/usePersistedState';
 import { useApps } from '@/src/store/apps';
 import { useTheme } from '@/src/theme/ThemeProvider';
 import { androidVersionFor } from '@/src/utils/androidVersions';
@@ -19,11 +20,25 @@ export default function AppDetailsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { pkg } = useLocalSearchParams<{ pkg: string }>();
-  const { getApp } = useApps();
+  const { getApp, usageTimes, usageAccess, refreshUsage, openUsageAccessSettings } = useApps();
   const { node: toastNode, show } = useToast();
+  const [favorites, setFavorites] = usePersistedState<string[]>('app-lister.favorites', []);
+  const [usagePrompt, setUsagePrompt] = useState(false);
 
   const packageName = Array.isArray(pkg) ? pkg[0] : pkg ?? '';
   const app = getApp(packageName);
+  const isFavorite = favorites.includes(packageName);
+
+  const toggleFavorite = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    setFavorites(
+      isFavorite
+        ? favorites.filter((p) => p !== packageName)
+        : [...favorites, packageName],
+    );
+  }, [favorites, isFavorite, packageName, setFavorites]);
+
+  const lastUsed = usageTimes[packageName] ?? 0;
 
   const goBack = useCallback(() => {
     if (router.canGoBack()) router.back();
@@ -101,6 +116,22 @@ export default function AppDetailsScreen() {
             ) : null}
           </View>
 
+          <Pressable
+            onPress={toggleFavorite}
+            hitSlop={8}
+            accessibilityLabel={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+            style={styles.favoriteButton}
+          >
+            <Ionicons
+              name={isFavorite ? 'star' : 'star-outline'}
+              size={22}
+              color={isFavorite ? tokens.primary : tokens.onSurfaceVariant}
+            />
+            <Text style={[styles.favoriteText, { color: isFavorite ? tokens.primary : tokens.onSurfaceVariant }]}>
+              {isFavorite ? 'Favorited' : 'Add to favorites'}
+            </Text>
+          </Pressable>
+
           <View style={styles.actionsRow}>
             <Pressable
               onPress={launch}
@@ -136,6 +167,11 @@ export default function AppDetailsScreen() {
           <InfoRow label="Package name" value={app.packageName} mono onCopy={copyPackage} />
           <InfoRow label="Version" value={app.versionName} />
           <InfoRow label="Version code" value={app.versionCode ? String(app.versionCode) : '—'} />
+          <InfoRow
+            label="Last used"
+            value={usageAccess ? (lastUsed ? formatDate(lastUsed) : 'Never') : 'Unavailable'}
+            last={false}
+          />
           <InfoRow label="Installed from" value={installerLabel(app.installer)} />
           <InfoRow label="Category" value={categoryLabel(app.category)} />
           <InfoRow label="Minimum OS" value={androidVersionFor(app.minSdk)} />
@@ -144,6 +180,29 @@ export default function AppDetailsScreen() {
           <InfoRow label="Updated" value={formatDate(app.updateTime)} />
           <InfoRow label="APK size" value={formatBytes(app.apkSizeBytes)} />
           <InfoRow label="APK path" value={app.apkPath || '—'} mono small last />
+
+          {!usageAccess ? (
+            <View style={[styles.usagePrompt, { backgroundColor: tokens.surfaceContainerHigh }]}>
+              <View style={styles.usageText}>
+                <Text style={[styles.usageTitle, { color: tokens.onSurface }]}>
+                  Show “last used” times
+                </Text>
+                <Text style={[styles.usageHint, { color: tokens.onSurfaceVariant }]}>
+                  Grant usage access in Android settings — App Lister reads nothing else, and it stays on-device.
+                </Text>
+              </View>
+              <Switch
+                value={usagePrompt}
+                onValueChange={() => {
+                  setUsagePrompt(true);
+                  openUsageAccessSettings();
+                  setTimeout(refreshUsage, 3000);
+                }}
+                trackColor={{ false: tokens.outlineVariant, true: tokens.primary }}
+                thumbColor="#FFFFFF"
+              />
+            </View>
+          ) : null}
         </Animated.View>
       </ScrollView>
       {toastNode}
@@ -244,6 +303,38 @@ const styles = StyleSheet.create({
   heroChipText: {
     fontSize: 12.5,
     fontWeight: '600',
+  },
+  favoriteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+  },
+  favoriteText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+  },
+  usagePrompt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    borderRadius: 18,
+    padding: 14,
+    marginTop: 12,
+    marginHorizontal: 18,
+  },
+  usageText: {
+    flex: 1,
+    gap: 2,
+  },
+  usageTitle: {
+    fontSize: 13.5,
+    fontWeight: '600',
+  },
+  usageHint: {
+    fontSize: 12,
   },
   actionsRow: {
     flexDirection: 'row',

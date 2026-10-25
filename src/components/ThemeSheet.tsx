@@ -4,13 +4,19 @@ import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '@/src/theme/ThemeProvider';
+import { useTheme, type IconShape } from '@/src/theme/ThemeProvider';
 import { ACCENT_PRESETS, type ThemeMode } from '@/src/theme/tokens';
 
 const MODES: { key: ThemeMode; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { key: 'system', label: 'Follow system', icon: 'phone-portrait-outline' },
   { key: 'light', label: 'Light', icon: 'sunny-outline' },
   { key: 'dark', label: 'Dark', icon: 'moon-outline' },
+];
+
+const SHAPES: { key: IconShape; label: string }[] = [
+  { key: 'rounded', label: 'Rounded' },
+  { key: 'circle', label: 'Circle' },
+  { key: 'square', label: 'Square' },
 ];
 
 export function ThemeSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
@@ -24,6 +30,8 @@ export function ThemeSheet({ visible, onClose }: { visible: boolean; onClose: ()
     setUseWallpaper,
     amoled,
     setAmoled,
+    iconShape,
+    setIconShape,
   } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -118,6 +126,40 @@ export function ThemeSheet({ visible, onClose }: { visible: boolean; onClose: ()
                   trackColor={{ false: tokens.outlineVariant, true: tokens.primary }}
                   thumbColor="#FFFFFF"
                 />
+              </View>
+
+              <View style={styles.toggleRow}>
+                <Ionicons name="apps-outline" size={20} color={tokens.onSurfaceVariant} style={styles.optionIcon} />
+                <View style={styles.toggleText}>
+                  <Text style={[styles.optionLabel, { color: tokens.onSurface }]}>Icon shape</Text>
+                  <View style={styles.shapeRow}>
+                    {SHAPES.map((s) => {
+                      const selected = iconShape === s.key;
+                      return (
+                        <Pressable
+                          key={s.key}
+                          onPress={() => select(() => setIconShape(s.key))}
+                          style={[
+                            styles.shapeChip,
+                            {
+                              borderColor: selected ? 'transparent' : tokens.outline,
+                              backgroundColor: selected ? tokens.secondaryContainer : 'transparent',
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.shapeLabel,
+                              { color: selected ? tokens.onSecondaryContainer : tokens.onSurfaceVariant },
+                            ]}
+                          >
+                            {s.label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
               </View>
 
               <Text style={[styles.footnote, { color: tokens.onSurfaceVariant }]}>
@@ -217,6 +259,21 @@ const styles = StyleSheet.create({
   },
   toggleHint: {
     fontSize: 12,
+  },
+  shapeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
+  shapeChip: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  shapeLabel: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   footnote: {
     fontSize: 12,

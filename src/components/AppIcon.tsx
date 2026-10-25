@@ -2,7 +2,13 @@ import React, { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import type { NativeAppInfo } from 'installed-apps';
-import { useTheme } from '@/src/theme/ThemeProvider';
+import { useTheme, type IconShape } from '@/src/theme/ThemeProvider';
+
+const SHAPE_RADIUS: Record<IconShape, (size: number) => number> = {
+  rounded: (size) => size * 0.24,
+  circle: (size) => size / 2,
+  square: (size) => size * 0.08,
+};
 
 export const AppIcon = memo(function AppIcon({
   app,
@@ -11,7 +17,7 @@ export const AppIcon = memo(function AppIcon({
   app: NativeAppInfo;
   size: number;
 }) {
-  const { tokens } = useTheme();
+  const { tokens, iconShape } = useTheme();
 
   if (!app.iconPath) {
     return <LetterTile name={app.appName} size={size} />;
@@ -24,7 +30,7 @@ export const AppIcon = memo(function AppIcon({
         {
           width: size,
           height: size,
-          borderRadius: size * 0.24,
+          borderRadius: SHAPE_RADIUS[iconShape](size),
           backgroundColor: tokens.surfaceContainerHigh,
         },
       ]}
@@ -41,7 +47,15 @@ export const AppIcon = memo(function AppIcon({
   );
 });
 
-export const LetterTile = memo(function LetterTile({ name, size }: { name: string; size: number }) {
+export const LetterTile = memo(function LetterTile({
+  name,
+  size,
+  shape,
+}: {
+  name: string;
+  size: number;
+  shape?: IconShape;
+}) {
   const { tokens } = useTheme();
   return (
     <View
@@ -51,7 +65,7 @@ export const LetterTile = memo(function LetterTile({ name, size }: { name: strin
         {
           width: size,
           height: size,
-          borderRadius: size * 0.24,
+          borderRadius: SHAPE_RADIUS[shape ?? 'rounded'](size),
           backgroundColor: tokens.primaryContainer,
         },
       ]}
