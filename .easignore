@@ -1,9 +1,0 @@
-# EAS only needs the app source. The website is built and deployed by
-# GitHub Actions; native folders are prebuilt in the cloud (CNG).
-node_modules
-android
-ios
-app-lister-website
-.github
-docs
-.expo
