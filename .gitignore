@@ -69,3 +69,5 @@ logurl.txt
 build-log.txt
 build2.json
 screen*.png
+shots-*.png
+ui.xml
