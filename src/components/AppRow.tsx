@@ -1,7 +1,6 @@
 import React, { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
-  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
@@ -12,7 +11,6 @@ import { AppIcon } from './AppIcon';
 import { useTheme } from '@/src/theme/ThemeProvider';
 
 const SPRING = { damping: 22, stiffness: 320 };
-const ENTRANCE_LIMIT = 6;
 
 function usePressScale() {
   const scale = useSharedValue(1);
@@ -30,11 +28,9 @@ function usePressScale() {
 
 export const AppRow = memo(function AppRow({
   app,
-  index,
   onPress,
 }: {
   app: NativeAppInfo;
-  index: number;
   onPress: (app: NativeAppInfo) => void;
 }) {
   const { tokens } = useTheme();
@@ -46,10 +42,7 @@ export const AppRow = memo(function AppRow({
   };
 
   return (
-    <Animated.View
-      entering={index < ENTRANCE_LIMIT ? FadeInDown.delay(index * 10).duration(180) : undefined}
-      style={animatedStyle}
-    >
+    <Animated.View style={animatedStyle}>
       <Pressable
         onPress={handlePress}
         onPressIn={pressIn}
@@ -78,12 +71,10 @@ export const AppRow = memo(function AppRow({
 
 export const AppTile = memo(function AppTile({
   app,
-  index,
   width,
   onPress,
 }: {
   app: NativeAppInfo;
-  index: number;
   width: number;
   onPress: (app: NativeAppInfo) => void;
 }) {
@@ -96,10 +87,7 @@ export const AppTile = memo(function AppTile({
   };
 
   return (
-    <Animated.View
-      entering={index < ENTRANCE_LIMIT ? FadeInDown.delay(Math.min(index, 8) * 10).duration(180) : undefined}
-      style={[animatedStyle, { width }]}
-    >
+    <Animated.View style={[animatedStyle, { width }]}>
       <Pressable
         onPress={handlePress}
         onPressIn={pressIn}

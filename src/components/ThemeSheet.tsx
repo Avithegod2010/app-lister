@@ -193,11 +193,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   wallpaperSwatch: {
+    width: 52,
+    height: 40,
+    borderRadius: 20,
     borderWidth: 1,
     borderStyle: 'dashed',
   },
   swatchLabel: {
-    fontSize: 8.5,
+    fontSize: 8,
     fontWeight: '600',
     marginTop: 1,
   },

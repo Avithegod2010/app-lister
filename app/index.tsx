@@ -122,16 +122,6 @@ export default function IndexScreen() {
     return items;
   }, [sorted, view, grouped]);
 
-  const stickyIndices = useMemo(
-    () =>
-      view === 'list' && grouped
-        ? listData
-            .map((item, i) => (item.kind === 'header' ? i : -1))
-            .filter((i) => i >= 0)
-        : [],
-    [listData, view, grouped],
-  );
-
   const openApp = useCallback(
     (app: NativeAppInfo) => {
       router.push({ pathname: '/pkg', params: { pkg: app.packageName } });
@@ -140,12 +130,12 @@ export default function IndexScreen() {
   );
 
   const renderItem = useCallback(
-    ({ item, index }: { item: ListItem; index: number }) => {
+    ({ item }: { item: ListItem }) => {
       if (item.kind === 'header') return <SectionHeader letter={item.letter} />;
       if (view === 'grid') {
-        return <AppTile app={item.app} index={index} width={(windowWidth - 40) / 4} onPress={openApp} />;
+        return <AppTile app={item.app} width={(windowWidth - 40) / 4} onPress={openApp} />;
       }
-      return <AppRow app={item.app} index={index} onPress={openApp} />;
+      return <AppRow app={item.app} onPress={openApp} />;
     },
     [view, openApp, windowWidth],
   );
@@ -302,7 +292,6 @@ export default function IndexScreen() {
           data={listData}
           renderItem={renderItem}
           keyExtractor={(item) => item.key}
-          stickyHeaderIndices={stickyIndices}
           numColumns={view === 'grid' ? 4 : 1}
           contentContainerStyle={
             view === 'grid' ? styles.gridContent : styles.listContent
