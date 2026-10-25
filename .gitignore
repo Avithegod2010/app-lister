@@ -71,3 +71,13 @@ build2.json
 screen*.png
 shots-*.png
 ui.xml
+v-*.png
+v-*.xml
+
+# website build output
+.next/
+out/
+.vercel/
+.turbo/
+
+app-lister-website/*.log
