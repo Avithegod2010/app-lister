@@ -1,9 +1,23 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
-import { Pressable, Image, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import {
+  Image,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+import Animated, {
+  FadeInDown,
+  useAnimatedStyle,
+  useSharedValue,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeAppInfo } from 'installed-apps';
 import { AppRow, AppTile, SectionHeader } from '@/src/components/AppRow';
@@ -24,7 +38,7 @@ type SortKey = 'name-asc' | 'name-desc' | 'installed-new' | 'installed-old' | 'u
 type SheetKind = 'sort' | 'export' | 'theme' | null;
 
 type ListItem =
-  | { kind: 'header'; key: string; letter: string; tint?: boolean }
+  | { kind: 'header'; key: string; letter: string }
   | { kind: 'app'; key: string; app: NativeAppInfo };
 
 const APP_LOGO = require('../assets/images/android-icon-foreground.png');
@@ -78,6 +92,13 @@ export default function IndexScreen() {
   const [favorites, setFavorites] = usePersistedState<string[]>('app-lister.favorites', []);
   const [sheet, setSheet] = useState<SheetKind>(null);
   const [selection, setSelection] = useState<string[] | null>(null);
+
+  // Collapsing header: measured height + scroll-driven slide.
+  const [headerH, setHeaderH] = useState(360);
+  const scrollY = useSharedValue(0);
+  const [compactVisible, setCompactVisible] = useState(false);
+  const [railVisible, setRailVisible] = useState(false);
+  const railTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const favoriteSet = useMemo(() => new Set(favorites), [favorites]);
 
@@ -186,10 +207,38 @@ export default function IndexScreen() {
       if (!flat) return;
       const idx = listData.findIndex((item) => item.kind === 'header' && item.letter === letter);
       if (idx < 0) return;
-      flat.scrollToIndex({ index: idx, animated: false });
+      flat.scrollToIndex({ index: idx, animated: true });
     },
     [listData],
   );
+
+  const scrollToTop = useCallback(() => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+  }, []);
+
+  const onScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const y = e.nativeEvent.contentOffset.y;
+      scrollY.value = y;
+      const collapsing = y > headerH * 0.7;
+      setCompactVisible((prev) => (prev === collapsing ? prev : collapsing));
+      const railWanted = view === 'list' && grouped && status === 'ready' && y > 30;
+      if (railWanted) {
+        setRailVisible((prev) => (prev ? prev : true));
+        if (railTimer.current) clearTimeout(railTimer.current);
+        railTimer.current = setTimeout(() => setRailVisible(false), 1000);
+      } else if (!railWanted) {
+        setRailVisible((prev) => (prev ? false : prev));
+      }
+    },
+    [headerH, view, grouped, status, scrollY],
+  );
+
+  // The whole header slides up off-screen in step with scrolling, and merges
+  // back as the user returns toward the top.
+  const headerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: -Math.min(scrollY.value, headerH) }],
+  }));
 
   const openApp = useCallback(
     (app: NativeAppInfo) => {
@@ -280,138 +329,183 @@ export default function IndexScreen() {
   const scanning = status === 'loading';
   const selectedCount = selection?.length ?? 0;
 
-  return (
-    <View style={[styles.root, { backgroundColor: tokens.surface, paddingTop: insets.top }]}>
-      <Animated.View entering={FadeInDown.duration(220)} style={styles.header}>
-        {selection !== null ? (
-          <View style={styles.selectionBar}>
-            <Pressable
-              onPress={exitSelection}
-              hitSlop={8}
-              accessibilityLabel="Exit selection"
-              style={[styles.roundIconButton, { backgroundColor: tokens.surfaceContainerHigh }]}
-            >
-              <Ionicons name="close" size={21} color={tokens.onSurface} />
-            </Pressable>
-            <View style={styles.titleBlock}>
-              <Text style={[styles.title, { color: tokens.onSurface }]}>Select apps</Text>
-              <Text style={[styles.subtitle, { color: tokens.onSurfaceVariant }]}>
-                {selectedCount} selected
-              </Text>
-            </View>
-            <RoundIconButton
-              icon="copy-outline"
-              onPress={() => setSheet('export')}
-              accessibilityLabel="Export selection"
-            />
+  const headerBody = (
+    <>
+      {selection !== null ? (
+        <View style={styles.selectionBar}>
+          <Pressable
+            onPress={exitSelection}
+            hitSlop={8}
+            accessibilityLabel="Exit selection"
+            style={[styles.roundIconButton, { backgroundColor: tokens.surfaceContainerHigh }]}
+          >
+            <Ionicons name="close" size={21} color={tokens.onSurface} />
+          </Pressable>
+          <View style={styles.titleBlock}>
+            <Text style={[styles.title, { color: tokens.onSurface }]}>Select apps</Text>
+            <Text style={[styles.subtitle, { color: tokens.onSurfaceVariant }]}>
+              {selectedCount} selected
+            </Text>
           </View>
-        ) : (
-          <View style={styles.titleRow}>
+          <RoundIconButton
+            icon="copy-outline"
+            onPress={() => setSheet('export')}
+            accessibilityLabel="Export selection"
+          />
+        </View>
+      ) : (
+        <View style={styles.titleRow}>
+          <View style={[styles.logoFrame, { backgroundColor: tokens.primary }]}>
+            <Image source={APP_LOGO} style={styles.logo} resizeMode="contain" />
+          </View>
+          <View style={styles.titleBlock}>
+            <Text style={[styles.title, { color: tokens.onSurface }]}>All apps</Text>
+            <Text style={[styles.subtitle, { color: tokens.onSurfaceVariant }]}>
+              {scanning
+                ? progress
+                  ? `Scanning apps · ${progress.total ? `${progress.loaded}/${progress.total}` : progress.loaded}`
+                  : 'Scanning apps…'
+                : `${apps.length} apps · ${formatBytes(totalSize)} of APKs`}
+            </Text>
+          </View>
+          <RoundIconButton
+            icon="color-palette-outline"
+            onPress={() => setSheet('theme')}
+            accessibilityLabel="Theme"
+          />
+          <RoundIconButton
+            icon="share-social-outline"
+            onPress={() => setSheet('export')}
+            accessibilityLabel="Export list"
+          />
+        </View>
+      )}
+
+      {selection === null ? (
+        <>
+          <View style={styles.statsRow}>
+            <StatCard label="Total apps" value={String(apps.length)} bg={tokens.primaryContainer} fg={tokens.onPrimaryContainer} />
+            <StatCard label="User" value={String(userCount)} bg={tokens.secondaryContainer} fg={tokens.onSecondaryContainer} />
+            <StatCard
+              label="System"
+              value={String(apps.length - userCount)}
+              bg={tokens.tertiaryContainer}
+              fg={tokens.onTertiaryContainer}
+            />
+            <StatCard label="APK size" value={formatBytes(totalSize)} bg={tokens.secondaryContainer} fg={tokens.onSecondaryContainer} />
+          </View>
+
+          <View style={[styles.searchPill, { backgroundColor: tokens.surfaceContainerHigh }]}>
+            <Ionicons name="search" size={20} color={tokens.onSurfaceVariant} />
+            <TextInput
+              value={search}
+              onChangeText={setSearch}
+              placeholder="Search apps or packages"
+              placeholderTextColor={tokens.onSurfaceVariant}
+              style={[styles.searchInput, { color: tokens.onSurface }]}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="search"
+            />
+            {search ? (
+              <Pressable onPress={() => setSearch('')} hitSlop={8} accessibilityLabel="Clear search">
+                <Ionicons name="close-circle" size={18} color={tokens.onSurfaceVariant} />
+              </Pressable>
+            ) : null}
+          </View>
+
+          <View style={styles.chipsRow}>
+            {FILTER_CHIPS.map((chip) => (
+              <Chip
+                key={chip.key}
+                label={chip.label}
+                selected={filter === chip.key}
+                onPress={() => setFilter(chip.key)}
+                tokens={tokens}
+              />
+            ))}
+            <View style={styles.chipsSpacer} />
+            <Pressable
+              onPress={() => setSheet('sort')}
+              style={[styles.smallButton, { backgroundColor: tokens.surfaceContainerHigh }]}
+              accessibilityLabel="Sort"
+            >
+              <Ionicons name="swap-vertical" size={16} color={tokens.onSurfaceVariant} />
+              <Text style={[styles.smallButtonText, { color: tokens.onSurfaceVariant }]}>
+                {SORT_OPTIONS.find((o) => o.key === sort)?.label}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => setView(view === 'list' ? 'grid' : 'list')}
+              style={[styles.smallButtonIcon, { backgroundColor: tokens.surfaceContainerHigh }]}
+              accessibilityLabel="Toggle view"
+            >
+              <Ionicons
+                name={view === 'list' ? 'grid-outline' : 'list-outline'}
+                size={17}
+                color={tokens.onSurfaceVariant}
+              />
+            </Pressable>
+          </View>
+        </>
+      ) : (
+        <View style={[styles.hint, { backgroundColor: tokens.surfaceContainerLow }]}>
+          <Ionicons name="hand-left-outline" size={15} color={tokens.onSurfaceVariant} />
+          <Text style={[styles.hintText, { color: tokens.onSurfaceVariant }]}>
+            Tap apps to select · long-press to start again
+          </Text>
+        </View>
+      )}
+    </>
+  );
+
+  const ready = status === 'ready';
+
+  return (
+    <View style={[styles.root, { backgroundColor: tokens.surface }]}>
+      {/* Collapsing header — slides away with the first scroll, merges back at the top. */}
+      <Animated.View
+        style={[styles.header, styles.headerFloating, { paddingTop: insets.top }, headerStyle]}
+        onLayout={(e) => {
+          const h = e.nativeEvent.layout.height;
+          setHeaderH((prev) => (Math.abs(prev - h) > 1 ? h : prev));
+        }}
+      >
+        {headerBody}
+      </Animated.View>
+
+      {/* Compact bar — fades in once the header has slid away. */}
+      {compactVisible && selection === null && ready ? (
+        <Animated.View
+          entering={FadeInDown.duration(180)}
+          style={[styles.compactBar, { top: insets.top + 6, backgroundColor: tokens.surfaceContainer }]}
+        >
+          <Pressable style={styles.compactLeft} onPress={scrollToTop} accessibilityLabel="Back to top">
             <View style={[styles.logoFrame, { backgroundColor: tokens.primary }]}>
               <Image source={APP_LOGO} style={styles.logo} resizeMode="contain" />
             </View>
             <View style={styles.titleBlock}>
-              <Text style={[styles.title, { color: tokens.onSurface }]}>All apps</Text>
-              <Text style={[styles.subtitle, { color: tokens.onSurfaceVariant }]}>
-                {scanning
-                  ? progress
-                    ? `Scanning apps · ${progress.total ? `${progress.loaded}/${progress.total}` : progress.loaded}`
-                    : 'Scanning apps…'
-                  : `${apps.length} apps · ${formatBytes(totalSize)} of APKs`}
+              <Text style={[styles.compactTitle, { color: tokens.onSurface }]}>All apps</Text>
+              <Text style={[styles.compactSub, { color: tokens.onSurfaceVariant }]}>
+                {apps.length} apps · {formatBytes(totalSize)}
               </Text>
             </View>
-            <RoundIconButton
-              icon="color-palette-outline"
-              onPress={() => setSheet('theme')}
-              accessibilityLabel="Theme"
-            />
-            <RoundIconButton
-              icon="share-social-outline"
-              onPress={() => setSheet('export')}
-              accessibilityLabel="Export list"
-            />
-          </View>
-        )}
-
-        {selection === null ? (
-          <>
-            <View style={styles.statsRow}>
-              <StatCard label="Total apps" value={String(apps.length)} bg={tokens.primaryContainer} fg={tokens.onPrimaryContainer} />
-              <StatCard label="User" value={String(userCount)} bg={tokens.secondaryContainer} fg={tokens.onSecondaryContainer} />
-              <StatCard
-                label="System"
-                value={String(apps.length - userCount)}
-                bg={tokens.tertiaryContainer}
-                fg={tokens.onTertiaryContainer}
-              />
-              <StatCard label="APK size" value={formatBytes(totalSize)} bg={tokens.secondaryContainer} fg={tokens.onSecondaryContainer} />
-            </View>
-
-            <View style={[styles.searchPill, { backgroundColor: tokens.surfaceContainerHigh }]}>
-              <Ionicons name="search" size={20} color={tokens.onSurfaceVariant} />
-              <TextInput
-                value={search}
-                onChangeText={setSearch}
-                placeholder="Search apps or packages"
-                placeholderTextColor={tokens.onSurfaceVariant}
-                style={[styles.searchInput, { color: tokens.onSurface }]}
-                autoCapitalize="none"
-                autoCorrect={false}
-                returnKeyType="search"
-              />
-              {search ? (
-                <Pressable onPress={() => setSearch('')} hitSlop={8} accessibilityLabel="Clear search">
-                  <Ionicons name="close-circle" size={18} color={tokens.onSurfaceVariant} />
-                </Pressable>
-              ) : null}
-            </View>
-
-            <View style={styles.chipsRow}>
-              {FILTER_CHIPS.map((chip) => (
-                <Chip
-                  key={chip.key}
-                  label={chip.label}
-                  selected={filter === chip.key}
-                  onPress={() => setFilter(chip.key)}
-                  tokens={tokens}
-                />
-              ))}
-              <View style={styles.chipsSpacer} />
-              <Pressable
-                onPress={() => setSheet('sort')}
-                style={[styles.smallButton, { backgroundColor: tokens.surfaceContainerHigh }]}
-                accessibilityLabel="Sort"
-              >
-                <Ionicons name="swap-vertical" size={16} color={tokens.onSurfaceVariant} />
-                <Text style={[styles.smallButtonText, { color: tokens.onSurfaceVariant }]}>
-                  {SORT_OPTIONS.find((o) => o.key === sort)?.label}
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={() => setView(view === 'list' ? 'grid' : 'list')}
-                style={[styles.smallButtonIcon, { backgroundColor: tokens.surfaceContainerHigh }]}
-                accessibilityLabel="Toggle view"
-              >
-                <Ionicons
-                  name={view === 'list' ? 'grid-outline' : 'list-outline'}
-                  size={17}
-                  color={tokens.onSurfaceVariant}
-                />
-              </Pressable>
-            </View>
-          </>
-        ) : (
-          <View style={[styles.hint, { backgroundColor: tokens.surfaceContainerLow }]}>
-            <Ionicons name="hand-left-outline" size={15} color={tokens.onSurfaceVariant} />
-            <Text style={[styles.hintText, { color: tokens.onSurfaceVariant }]}>
-              Tap apps to select · long-press to start again
-            </Text>
-          </View>
-        )}
-      </Animated.View>
+          </Pressable>
+          <RoundIconButton
+            icon="color-palette-outline"
+            onPress={() => setSheet('theme')}
+            accessibilityLabel="Theme"
+          />
+          <RoundIconButton
+            icon="share-social-outline"
+            onPress={() => setSheet('export')}
+            accessibilityLabel="Export list"
+          />
+        </Animated.View>
+      ) : null}
 
       {status === 'error' ? (
-        <View style={styles.centerState}>
+        <View style={[styles.centerState, { paddingTop: headerH }]}>
           <Ionicons name="cloud-offline-outline" size={48} color={tokens.onSurfaceVariant} />
           <Text style={[styles.stateTitle, { color: tokens.onSurface }]}>Couldn’t scan apps</Text>
           <Text style={[styles.stateBody, { color: tokens.onSurfaceVariant }]}>{error}</Text>
@@ -423,42 +517,44 @@ export default function IndexScreen() {
           </Pressable>
         </View>
       ) : scanning && apps.length === 0 ? (
-        <View style={styles.skeletonWrap}>
+        <View style={[styles.skeletonWrap, { paddingTop: headerH }]}>
           <SkeletonRows />
         </View>
       ) : (
-        <View style={styles.listWrap}>
-          <FlashList
-            ref={listRef}
-            key={view}
-            data={listData}
-            renderItem={renderItem}
-            keyExtractor={(item) => item.key}
-            numColumns={view === 'grid' ? 4 : 1}
-            contentContainerStyle={
-              view === 'grid' ? styles.gridContent : styles.listContent
-            }
-            onRefresh={rescan}
-            refreshing={scanning && apps.length > 0}
-            ListEmptyComponent={
-              <View style={styles.centerState}>
-                <Ionicons name="search-outline" size={48} color={tokens.onSurfaceVariant} />
-                <Text style={[styles.stateTitle, { color: tokens.onSurface }]}>
-                  {filter === 'favorites' && !search ? 'No favorites yet' : 'No apps found'}
-                </Text>
-                <Text style={[styles.stateBody, { color: tokens.onSurfaceVariant }]}>
-                  {filter === 'favorites' && !search
-                    ? 'Tap the star on any app to pin it here.'
-                    : `Nothing matches “${search.trim()}”. Try another name or package.`}
-                </Text>
-              </View>
-            }
-          />
-          {view === 'list' && grouped && status === 'ready' ? (
-            <FastScroller availableLetters={railLetters} onLetter={scrollToLetter} />
-          ) : null}
-        </View>
+        <FlashList
+          ref={listRef}
+          key={view}
+          data={listData}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.key}
+          numColumns={view === 'grid' ? 4 : 1}
+          contentContainerStyle={[
+            view === 'grid' ? styles.gridContent : styles.listContent,
+            { paddingTop: headerH },
+          ]}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          onRefresh={rescan}
+          refreshing={scanning && apps.length > 0}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <Ionicons name="search-outline" size={48} color={tokens.onSurfaceVariant} />
+              <Text style={[styles.stateTitle, { color: tokens.onSurface }]}>
+                {filter === 'favorites' && !search ? 'No favorites yet' : 'No apps found'}
+              </Text>
+              <Text style={[styles.stateBody, { color: tokens.onSurfaceVariant }]}>
+                {filter === 'favorites' && !search
+                  ? 'Tap the star on any app to pin it here.'
+                  : `Nothing matches “${search.trim()}”. Try another name or package.`}
+              </Text>
+            </View>
+          }
+        />
       )}
+
+      {railVisible && view === 'list' && grouped && ready ? (
+        <FastScroller availableLetters={railLetters} onLetter={scrollToLetter} />
+      ) : null}
 
       <OptionSheet
         visible={sheet === 'sort' || sheet === 'export'}
@@ -563,6 +659,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 12,
     gap: 14,
+    backgroundColor: 'transparent',
+  },
+  headerFloating: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    elevation: 1,
+  },
+  compactBar: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    zIndex: 30,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  compactLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  compactTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  compactSub: {
+    fontSize: 11.5,
   },
   titleRow: {
     flexDirection: 'row',
@@ -692,9 +827,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  listWrap: {
-    flex: 1,
-  },
   listContent: {
     paddingBottom: 40,
   },
@@ -704,7 +836,13 @@ const styles = StyleSheet.create({
   },
   skeletonWrap: {
     flex: 1,
-    paddingTop: 8,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 32,
+    paddingTop: 60,
   },
   centerState: {
     flex: 1,

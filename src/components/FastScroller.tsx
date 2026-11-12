@@ -1,6 +1,11 @@
 import React, { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
+import Animated, {
+  FadeInDown,
+  FadeInRight,
+  FadeOut,
+  FadeOutRight,
+} from 'react-native-reanimated';
 import { useTheme } from '@/src/theme/ThemeProvider';
 
 const RAIL_LETTERS = [
@@ -10,7 +15,8 @@ const RAIL_LETTERS = [
 
 /**
  * A–Z rail pinned to the screen edge. Drag or tap a letter to jump.
- * Only letters present in the list are highlighted; missing ones are dimmed.
+ * Slides in while scrolling, slides away when idle; the active letter
+ * pops in a bubble beside the rail while dragging.
  */
 export function FastScroller({
   availableLetters,
@@ -37,11 +43,23 @@ export function FastScroller({
 
   return (
     <Animated.View
-      entering={FadeIn.duration(150)}
-      exiting={FadeOut.duration(150)}
+      entering={FadeInRight.duration(200)}
+      exiting={FadeOutRight.duration(220)}
       pointerEvents="box-none"
       style={styles.wrap}
     >
+      {active ? (
+        <Animated.View
+          key={active}
+          entering={FadeInDown.springify().damping(18).stiffness(300)}
+          exiting={FadeOut.duration(120)}
+          style={[styles.bubble, { backgroundColor: tokens.inverseSurface }]}
+          pointerEvents="none"
+        >
+          <Text style={[styles.bubbleText, { color: tokens.inverseOnSurface }]}>{active}</Text>
+        </Animated.View>
+      ) : null}
+
       <View
         style={[styles.rail, { backgroundColor: tokens.surfaceContainer }]}
         pointerEvents="auto"
@@ -56,8 +74,10 @@ export function FastScroller({
               onPress={() => pick(letter)}
               onPressIn={() => pick(letter)}
               disabled={!available}
-              hitSlop={0}
-              style={[styles.cell, isActive && { backgroundColor: tokens.primary }]}
+              style={[
+                styles.cell,
+                isActive && { backgroundColor: tokens.primary },
+              ]}
             >
               <Text
                 style={[
@@ -89,6 +109,26 @@ const styles = StyleSheet.create({
     bottom: 0,
     justifyContent: 'center',
     zIndex: 10,
+  },
+  bubble: {
+    position: 'absolute',
+    right: 34,
+    alignSelf: 'center',
+    minWidth: 52,
+    height: 52,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  bubbleText: {
+    fontSize: 24,
+    fontWeight: '800',
   },
   rail: {
     borderRadius: 999,

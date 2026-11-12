@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { FadeInDown, FadeOut } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
@@ -53,6 +53,12 @@ export function ThemeSheet({ visible, onClose }: { visible: boolean; onClose: ()
               <View style={[styles.handle, { backgroundColor: tokens.outlineVariant }]} />
               <Text style={[styles.title, { color: tokens.onSurface }]}>Appearance</Text>
 
+              <ScrollView
+                style={styles.scroll}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+                nestedScrollEnabled
+              >
               {MODES.map((m) => (
                 <Pressable
                   key={m.key}
@@ -165,6 +171,7 @@ export function ThemeSheet({ visible, onClose }: { visible: boolean; onClose: ()
               <Text style={[styles.footnote, { color: tokens.onSurfaceVariant }]}>
                 Accent colors are Material You palettes generated from a seed color.
               </Text>
+              </ScrollView>
             </Animated.View>
           ) : null}
         </Pressable>
@@ -184,6 +191,13 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 28,
     paddingTop: 10,
     paddingHorizontal: 8,
+    maxHeight: '85%',
+  },
+  scroll: {
+    flexGrow: 0,
+  },
+  scrollContent: {
+    paddingBottom: 4,
   },
   handle: {
     alignSelf: 'center',
