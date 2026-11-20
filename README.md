@@ -1,26 +1,12 @@
-<div align="center">
-
-<img src="assets/images/icon.png" width="96" alt="App Lister icon" />
-
 # App Lister
 
-**Every app on your phone. One beautiful list. Nothing else.**
+See every app installed on your Android phone, including system apps, in one offline list.
 
-[![Release](https://img.shields.io/github/v/release/Avithegod2010/app-lister?style=flat-square&color=3A55E0)](https://github.com/Avithegod2010/app-lister/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-3A55E0?style=flat-square)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Android-3DDC84?style=flat-square&logo=android&logoColor=white)](https://github.com/Avithegod2010/app-lister/releases/latest)
-[![Expo SDK 54](https://img.shields.io/badge/Expo-SDK%2054-000020?style=flat-square&logo=expo&logoColor=white)](https://expo.dev)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](CONTRIBUTING.md)
+**[Download APK v1.2.0](https://github.com/Avithegod2010/app-lister/releases/download/v1.2.0/app-lister-v1.2.0.apk)** · [Visit website](https://avithegod2010.github.io/app-lister/) · [Release notes](https://github.com/Avithegod2010/app-lister/releases/tag/v1.2.0)
 
-[📍 Website](https://avithegod2010.github.io/app-lister/) · [⬇ Download APK](https://github.com/Avithegod2010/app-lister/releases/latest) · [ 🛠 Report an issue](https://github.com/Avithegod2010/app-lister/issues)
-
-</div>
-
----
-
-App Lister does **exactly one thing**: it shows you every app installed on your Android phone — user apps and system apps — in one fast, fluid, gorgeous list. Inspired by the *List apps* page of [Inure App Manager](https://github.com/Hamza417/Inure), but stripped down to its purest form: **no managers, no killers, no analytics, no clutter.**
-
-It is **100% offline** — nothing ever leaves your device.
+| Light | Dark |
+| :---: | :---: |
+| <img src="docs/screenshots/home-light.jpg" alt="App Lister with the installed app list in light mode" width="270" /> | <img src="docs/screenshots/home-dark.jpg" alt="App Lister with the installed app list in dark mode" width="270" /> |
 
 ## ✨ Features
 
