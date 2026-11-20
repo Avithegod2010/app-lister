@@ -4,9 +4,9 @@ See every app installed on your Android phone, including system apps, in one off
 
 **[Download APK v1.2.0](https://github.com/Avithegod2010/app-lister/releases/download/v1.2.0/app-lister-v1.2.0.apk)** · [Visit website](https://avithegod2010.github.io/app-lister/) · [Release notes](https://github.com/Avithegod2010/app-lister/releases/tag/v1.2.0)
 
-| Light | Dark |
+| Light · installed apps | Dark · app details |
 | :---: | :---: |
-| <img src="docs/screenshots/home-light.jpg" alt="App Lister with the installed app list in light mode" width="270" /> | <img src="docs/screenshots/home-dark.jpg" alt="App Lister with the installed app list in dark mode" width="270" /> |
+| <img src="docs/screenshots/home-light.jpg" alt="App Lister with the installed app list in light mode" width="270" /> | <img src="docs/screenshots/home-dark.jpg" alt="App Lister app details in dark mode" width="270" /> |
 
 ## ✨ Features
 
