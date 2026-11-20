@@ -1,12 +1,16 @@
 <div align="center">
 
-<img src="assets/images/icon.png" width="88" height="88" alt="" />
+<img src="assets/images/icon.png" width="72" height="72" alt="" />
 
 <h1>App Lister</h1>
 
-<strong>Find, inspect, and export the apps installed on your Android phone.</strong>
+<p><strong>Find, inspect and export the apps installed on your Android phone.</strong></p>
 
-<p><strong><a href="https://github.com/Avithegod2010/app-lister/releases/download/v1.2.0/app-lister-v1.2.0.apk">Download APK v1.2.0</a></strong> · <a href="#screenshots">Screenshots</a> · <a href="https://github.com/Avithegod2010/app-lister/releases/tag/v1.2.0">Release notes</a></p>
+<h3><a href="https://avithegod2010.github.io/app-lister/">🌐 Visit the project website ↗</a></h3>
+
+<a href="https://avithegod2010.github.io/app-lister/"><img src="website-preview.jpg" width="820" alt="Preview of the App Lister website with its oversized title, cream paper and green typography" /></a>
+
+<p><strong><a href="https://github.com/Avithegod2010/app-lister/releases/download/v1.2.0/app-lister-v1.2.0.apk">⬇️ Download APK v1.2.0</a></strong> · <a href="#screenshots">App screenshots</a> · <a href="https://github.com/Avithegod2010/app-lister/releases/tag/v1.2.0">Release notes</a></p>
 
 <sub>Android 7.0 or newer · Includes user and system apps · Works offline</sub>
 
@@ -83,6 +87,4 @@ The project uses Expo SDK 54, React Native and a [Kotlin module](modules/install
 
 ## Project links
 
-[Project website](https://avithegod2010.github.io/app-lister/) · [Contributing](CONTRIBUTING.md) · [MIT license](LICENSE)
-
-Inspired by the app list in [Inure App Manager](https://github.com/Hamza417/Inure).
+[Contributing](CONTRIBUTING.md) · [MIT license](LICENSE)
