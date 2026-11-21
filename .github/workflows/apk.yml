@@ -78,7 +78,9 @@ jobs:
         run: |
           # Later keys win in a .properties file, so these override the template defaults.
           printf '\norg.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m\norg.gradle.caching=true\n' >> android/gradle.properties
-          grep -E 'org.gradle.jvmargs|newArchEnabled|reactNativeArchitectures' android/gradle.properties
+          # Maven Central intermittently answers 429 to shared runner IPs; let Gradle retry.
+          printf 'systemProp.org.gradle.internal.repository.max.retries=8\nsystemProp.org.gradle.internal.repository.initial.backoff=3000\n' >> android/gradle.properties
+          grep -E 'org.gradle.jvmargs|newArchEnabled|reactNativeArchitectures|max.retries' android/gradle.properties
 
       - name: Install the NDK Gradle expects
         run: |
@@ -97,7 +99,23 @@ jobs:
 
       - name: Build release APK
         working-directory: android
-        run: ./gradlew --no-daemon assembleRelease -PreactNativeArchitectures="$REACT_NATIVE_ARCHS"
+        run: |
+          set -uo pipefail
+          chmod +x gradlew
+          for attempt in 1 2 3; do
+            echo "::group::assembleRelease (attempt $attempt)"
+            if ./gradlew --no-daemon --console=plain assembleRelease \
+                -PreactNativeArchitectures="$REACT_NATIVE_ARCHS"; then
+              echo "::endgroup::"
+              echo "assembleRelease succeeded on attempt $attempt"
+              exit 0
+            fi
+            echo "::endgroup::"
+            echo "::warning::assembleRelease attempt $attempt failed; retrying after backoff"
+            sleep $((attempt * 45))
+          done
+          echo "::error::assembleRelease failed after 3 attempts"
+          exit 1
 
       - name: Verify APK and compute checksum
         id: verify
