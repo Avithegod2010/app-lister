@@ -37,6 +37,6 @@ jobs:
         run: npx tsc --noEmit
 
       - name: Build APK with EAS
-        run: npx eas-cli@latest build -p android --profile preview --non-interactive --no-wait
+        run: npx --yes eas-cli@27.11.0 build -p android --profile preview --non-interactive --no-wait
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
