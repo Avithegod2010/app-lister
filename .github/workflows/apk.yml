@@ -13,22 +13,57 @@ on:
       - "package.json"
       - "package-lock.json"
       - ".github/workflows/apk.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "src/**"
+      - "modules/**"
+      - "assets/**"
+      - "app.json"
+      - "eas.json"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/apk.yml"
   workflow_dispatch:
+    inputs:
+      eas_build:
+        description: "Also queue an EAS hosted build (needs remaining free-tier EAS quota)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
 
 concurrency:
-  group: apk
+  group: apk-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  NODE_VERSION: "22"
+  JAVA_VERSION: "17"
+  # Only the ABIs real phones use. Cuts native compile time by ~4x vs all four.
+  REACT_NATIVE_ARCHS: "arm64-v8a,armeabi-v7a"
+  EXPO_NO_TELEMETRY: "1"
+  CI: "1"
+
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  release-apk:
+    name: Release APK (Gradle, free runner)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
 
       - name: Install dependencies
         run: npm ci
@@ -36,7 +71,111 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
-      - name: Build APK with EAS
+      - name: Generate native Android project (expo prebuild)
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Tune Gradle for the runner
+        run: |
+          # Later keys win in a .properties file, so these override the template defaults.
+          printf '\norg.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m\norg.gradle.caching=true\n' >> android/gradle.properties
+          grep -E 'org.gradle.jvmargs|newArchEnabled|reactNativeArchitectures' android/gradle.properties
+
+      - name: Install the NDK Gradle expects
+        run: |
+          set -euo pipefail
+          NDK_VERSION="$(grep -oP 'ndkVersion\s*=\s*"\K[^"]+' android/build.gradle | head -n1 || true)"
+          echo "Gradle wants NDK: ${NDK_VERSION:-<unset>}"
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ -n "${NDK_VERSION}" ] && [ ! -d "$ANDROID_HOME/ndk/$NDK_VERSION" ]; then
+            yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
+            "$SDKMANAGER" --install "ndk;$NDK_VERSION" "cmake;3.22.1"
+          fi
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          build-root-directory: android
+
+      - name: Build release APK
+        working-directory: android
+        run: ./gradlew --no-daemon assembleRelease -PreactNativeArchitectures="$REACT_NATIVE_ARCHS"
+
+      - name: Verify APK and compute checksum
+        id: verify
+        run: |
+          set -euo pipefail
+          APK_PATH="$(find android/app/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)"
+          [ -n "$APK_PATH" ] || { echo "::error::assembleRelease produced no APK"; exit 1; }
+          VERSION="$(node -p "require('./app.json').expo.version")"
+          VERSION_CODE="$(node -p "require('./app.json').expo.android.versionCode")"
+          OUT="$RUNNER_TEMP/app-lister-v${VERSION}-vc${VERSION_CODE}-release-debugkey.apk"
+          cp "$APK_PATH" "$OUT"
+
+          python3 - "$OUT" <<'PY'
+          import sys, zipfile
+          apk = sys.argv[1]
+          with zipfile.ZipFile(apk) as z:
+              names = z.namelist()
+              bad = z.testzip()
+          assert bad is None, f"corrupt entry: {bad}"
+          for required in ("AndroidManifest.xml", "classes.dex", "resources.arsc"):
+              assert required in names, f"missing {required}"
+          libs = sorted({n.split('/')[1] for n in names if n.startswith('lib/')})
+          print(f"zip OK: {len(names)} entries, native ABIs: {libs}")
+          assert any(a.startswith('arm64') for a in libs), "no arm64 native libs"
+          print("hermes:", [n for n in names if 'libhermes' in n][:3])
+          PY
+
+          BUILD_TOOLS="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -n1)"
+          echo "--- aapt2 badging ---"
+          "$BUILD_TOOLS/aapt2" dump badging "$OUT" | grep -E "^(package|application-label|sdkVersion|targetSdkVersion)" | head -10
+          echo "--- apksigner ---"
+          "$BUILD_TOOLS/apksigner" verify --print-certs "$OUT"
+
+          SHA256="$(sha256sum "$OUT" | cut -d' ' -f1)"
+          SIZE="$(stat -c%s "$OUT")"
+          echo "apk=$OUT" >> "$GITHUB_OUTPUT"
+          echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
+          echo "size=$SIZE" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Release APK built with Gradle (free runner)"
+            echo ""
+            echo "| field | value |"
+            echo "| --- | --- |"
+            echo "| file | \`$(basename "$OUT")\` |"
+            echo "| version | ${VERSION} (versionCode ${VERSION_CODE}) |"
+            echo "| size | $((SIZE / 1024)) KiB |"
+            echo "| sha256 | \`$SHA256\` |"
+            echo "| ABIs | ${REACT_NATIVE_ARCHS} |"
+            echo ""
+            echo "Signed with the Android **debug** keystore shipped in the Expo/React Native template (\`CN=Android Debug\`), not the EAS release keystore. Installable for testing; publish through EAS when release-key signing is required."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-lister-release-apk
+          path: ${{ steps.verify.outputs.apk }}
+          if-no-files-found: error
+          retention-days: 30
+
+  eas-apk:
+    name: Optional EAS hosted build
+    if: github.event_name == 'workflow_dispatch' && inputs.eas_build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Queue EAS build (needs free-tier quota)
         run: npx eas-cli@latest build -p android --profile preview --non-interactive --no-wait
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
