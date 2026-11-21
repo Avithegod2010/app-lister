@@ -78,6 +78,14 @@ cd android
 
 On Windows, use `gradlew.bat assembleDebug` from the `android` folder. The [EAS preview profile](eas.json) can also build an APK.
 
+### Release APK from CI (free, no EAS quota)
+
+The [`Build APK`](.github/workflows/apk.yml) workflow runs `expo prebuild` and `./gradlew assembleRelease` on a free `ubuntu-24.04` runner, so it does not consume EAS hosted-build minutes. It runs on pull requests and on pushes to `main`, and can be started by hand from **Actions → Build APK → Run workflow**.
+
+Every successful run uploads `app-lister-release-apk` containing `app-lister-v<version>-vc<versionCode>-release-debugkey.apk`, plus its size and SHA256 in the job summary. The APK is a genuine `release` build (minified, Hermes bytecode, `arm64-v8a` + `armeabi-v7a`) signed with the **debug keystore** that ships in the Expo/React Native template (`CN=Android Debug`), because no release keystore is stored in this repository. That makes it installable for testing but not suitable for publishing; store releases still have to be signed with the EAS-managed release keystore.
+
+The EAS queueing step from the old workflow is kept as an optional `workflow_dispatch` job. Tick `eas_build` when the account still has free-tier EAS builds left, otherwise it is skipped.
+
 The project uses Expo SDK 54, React Native and a [Kotlin module](modules/installed-apps) for Android’s package manager.
 
 </details>
