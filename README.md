@@ -19,8 +19,8 @@
 ## Screenshots
 
 <p align="center">
-  <a href="docs/screenshots/home-light.jpg"><img src="docs/screenshots/home-light.jpg" width="29%" alt="The installed apps list in light mode, with search, filters and app counts" /></a>
-  <a href="docs/screenshots/home-dark.jpg"><img src="docs/screenshots/home-dark.jpg" width="29%" alt="An app’s details in dark mode, showing its package name, version and installer" /></a>
+  <a href="docs/screenshots/home-light.jpg"><img src="docs/screenshots/home-light.jpg" width="40%" alt="The installed apps list in light mode, with search, filters and app counts" /></a>
+  <a href="docs/screenshots/home-dark.jpg"><img src="docs/screenshots/home-dark.jpg" width="40%" alt="An app’s details in dark mode, showing its package name, version and installer" /></a>
 </p>
 
 <p align="center"><sub>Installed apps · App details</sub></p>
