@@ -186,9 +186,6 @@ export const SCREENSHOTS = [
   },
 ];
 
-export const APP_ICON =
-  "https://raw.githubusercontent.com/Avithegod2010/app-lister/main/assets/images/icon.png";
-
 export const BUILD_SCRIPT: { lines: { prompt?: string; text: string }[]; label: string }[] =
   [
     {
@@ -211,13 +208,3 @@ export const BUILD_SCRIPT: { lines: { prompt?: string; text: string }[]; label: 
       ],
     },
   ];
-
-export const NAV = [
-  { id: "cover", label: "Cover" },
-  { id: "manifest", label: "Manifest" },
-  { id: "brief", label: "Brief" },
-  { id: "screens", label: "Screens" },
-  { id: "spec", label: "Spec" },
-  { id: "telemetry", label: "Telemetry" },
-  { id: "build", label: "Build" },
-];
